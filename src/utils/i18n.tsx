@@ -22,7 +22,8 @@ const LANGUAGE_KEY = 'user-language';
 
 // Helper to get initial locale safely
 const getInitialLocale = () => {
-  const deviceLocale = Localization.locale || 'en';
+  const locales = Localization.getLocales();
+  const deviceLocale = locales[0]?.languageCode || 'en';
   return deviceLocale.split('-')[0];
 };
 

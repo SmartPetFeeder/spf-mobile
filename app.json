@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "spf-mobile",
+    "name": "Smart Pet Feeder",
     "slug": "spf-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "spfmobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,

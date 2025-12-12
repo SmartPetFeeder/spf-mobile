@@ -1,61 +1,48 @@
 {
   "expo": {
-    "name": "smartpetfeeder",
-    "slug": "smartpetfeeder",
+    "name": "spf-mobile",
+    "slug": "spf-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "smartpetfeeder",
+    "scheme": "spfmobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#007AFF"
-    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#007AFF"
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "NOTIFICATIONS"
-      ]
+      "predictiveBackGestureEnabled": false
     },
     "web": {
-      "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",
       [
-        "expo-notifications",
+        "expo-splash-screen",
         {
-          "icon": "./assets/images/notification-icon.png",
-          "color": "#4ECDC4",
-          "sounds": [
-            "./assets/sounds/notification.wav"
-          ]
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
         }
-      ],
-      "expo-font",
-      "expo-web-browser"
+      ]
     ],
     "experiments": {
-      "typedRoutes": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "9945ff0a-a642-4e26-8613-ac41edc0be03"
-      }
-    },
-    "owner": "ayak1kassar"
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
   }
 }

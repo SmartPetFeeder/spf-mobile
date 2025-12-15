@@ -1,7 +1,7 @@
 import { setupAxiosInterceptors } from '@/services/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SplashScreen, useRouter } from 'expo-router';
-import { createContext, PropsWithChildren, useEffect, useState } from 'react';
+import { createContext, PropsWithChildren, useCallback, useEffect, useState } from 'react';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -47,11 +47,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     router.replace('/(protected)/(tabs)/(settings)');
   };
 
-  const logOut = () => {
+  const logOut = useCallback(() => {
     setIsLoggedIn(false);
     storeAuthState({ isLoggedIn: false });
     router.replace('/login');
-  };
+  }, [router]);
 
   useEffect(() => {
     setupAxiosInterceptors(logOut);
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setIsReady(true);
     };
     getAuthFromStorage();
-  }, []);
+  }, [logOut]);
 
   useEffect(() => {
     if (isReady) {

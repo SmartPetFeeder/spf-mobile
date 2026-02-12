@@ -100,46 +100,6 @@ export default function AnalysisScreen() {
     };
   }, []);
 
-  const processStatistics = useCallback(
-    (statsData: Statistic[]) => {
-      console.log('[Analysis] Traitement des stats - données reçues:', statsData);
-      console.log('[Analysis] Animal sélectionné:', selectedAnimal);
-
-      if (statsData.length === 0) {
-        console.warn('[Analysis] Aucune statistique disponible');
-        setCurrentStats({
-          meals: '0/0',
-          consumed: '0g',
-          speed: '0g/min',
-          goal: '0%',
-          totalDistributed: 0,
-          averageTime: 0,
-          successRate: 100,
-        });
-        return;
-      }
-
-      // Filtrer par animal si sélectionné
-      let filteredStats = statsData;
-      if (selectedAnimal !== 'Tous') {
-        const selectedAnimalData = animals.find((a) => a.name === selectedAnimal);
-        console.log('[Analysis] Animal sélectionné:', selectedAnimalData);
-        if (selectedAnimalData) {
-          filteredStats = statsData.filter((s) => s.animalId === selectedAnimalData.id);
-        }
-      }
-
-      console.log('[Analysis] Stats filtrées:', filteredStats);
-
-      // Calculer les statistiques selon la période
-      let processedStats = calculatePeriodStats(filteredStats);
-      console.log('[Analysis] Stats calculées:', processedStats);
-
-      setCurrentStats(processedStats);
-    },
-    [animals, selectedAnimal, calculatePeriodStats],
-  );
-
   const loadData = useCallback(async () => {
     try {
       setLoading(true);

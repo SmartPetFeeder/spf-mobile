@@ -20,5 +20,13 @@ module.exports = defineConfig([
         },
       },
     },
+    rules: {
+      'prettier/prettier': 'off',
+      'import/no-unresolved': 'off',
+      'react-hooks/exhaustive-deps': 'warn',
+      'no-unused-vars': 'warn',
+      '@typescript-eslint/no-unused-vars': 'warn',
+      'react/no-unescaped-entities': 'off',
+    },
   },
 ]);

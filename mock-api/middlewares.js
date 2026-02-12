@@ -448,7 +448,7 @@ module.exports = (req, res, next) => {
     try {
       const decoded = jwt.verify(token, SECRET_KEY);
       req.userId = decoded.userId;
-    } catch (error) {
+    } catch (_error) {
       return res.status(401).json({
         error: 'Token invalide',
       });

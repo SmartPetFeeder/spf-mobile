@@ -1,41 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Alert,
-  Modal,
-  TextInput,
-  Image,
-  RefreshControl
-} from 'react-native';
-import { useRouter } from 'expo-router';
+import { BORDER_RADIUS, COLORS, SHADOWS, SPACING } from '@/constants/ThemeColors';
+import { useAuth } from '@/hooks/useAuth';
+import { Animal } from '@/types';
+import { animalBreedsApi, animalsApi, animalTypesApi } from '@/utils/BaseAPI';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { animalsApi } from '@/utils/BaseAPI';
-
-interface Animal {
-  id: number;
-  name: string;
-  type: string;
-  breed: string;
-  gender: string;
-  age: number;
-  ageUnit: string;
-  weight: number;
-  activityLevel: number;
-  photo?: string;
-}
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import {
+  Alert,
+  Image,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function AnimalManagementScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingAnimal, setEditingAnimal] = useState<Animal | null>(null);
+  const [animalTypes, setAnimalTypes] = useState([]);
+  const [animalBreeds, setAnimalBreeds] = useState([]);
+  const [filteredBreeds, setFilteredBreeds] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     type: 'Chien',
@@ -48,13 +42,6 @@ export default function AnimalManagementScreen() {
     photo: null,
   });
 
-  const animalTypes = [
-    { icon: '🐕', label: 'Chien' },
-    { icon: '🐱', label: 'Chat' },
-    { icon: '🐰', label: 'Lapin' },
-    { icon: '🦊', label: 'Renard' },
-  ];
-
   const activityLevels = [
     { level: 1, label: 'Peu actif', description: 'Repos principalement' },
     { level: 2, label: 'Légèrement actif', description: 'Courtes promenades' },
@@ -64,17 +51,49 @@ export default function AnimalManagementScreen() {
   ];
 
   useEffect(() => {
-    loadAnimals();
+    loadAllData();
   }, []);
 
-  const loadAnimals = async () => {
+  useEffect(() => {
+    // Filtrer les races en fonction du type sélectionné
+    const filtered = animalBreeds.filter((breed) => breed.type === formData.type);
+    setFilteredBreeds(filtered);
+    // Définir la première race disponible pour ce type
+    if (filtered && filtered.length > 0) {
+      setFormData((prev) => ({ ...prev, breed: filtered[0].label }));
+    }
+  }, [formData.type, animalBreeds]);
+
+  const loadAllData = async () => {
     try {
       setLoading(true);
-      const data = await animalsApi.getAll();
-      setAnimals(data || []);
+      console.log("[AnimalManagement] Chargement des données pour l'utilisateur:", user?.id);
+
+      // Charger les animaux de l'utilisateur courant
+      const animalsList = user?.id
+        ? await animalsApi.getByUser(user.id)
+        : await animalsApi.getAll();
+
+      const [typesList, breedsList] = await Promise.all([
+        animalTypesApi.getAll(),
+        animalBreedsApi.getAll(),
+      ]);
+
+      setAnimals(animalsList || []);
+      setAnimalTypes(typesList || []);
+      setAnimalBreeds(breedsList || []);
+
+      // Initialiser avec le premier type et sa première race
+      if (typesList && typesList.length > 0) {
+        setFormData((prev) => ({ ...prev, type: typesList[0].label }));
+        const firstBreeds = (breedsList || []).filter((b) => b.type === typesList[0].label);
+        if (firstBreeds.length > 0) {
+          setFormData((prev) => ({ ...prev, breed: firstBreeds[0].label }));
+        }
+      }
     } catch (error) {
-      console.error('Erreur lors du chargement des animaux:', error);
-      Alert.alert('Erreur', 'Impossible de charger les animaux');
+      console.error('[AnimalManagement] Erreur lors du chargement:', error);
+      Alert.alert('Erreur', 'Impossible de charger les données');
     } finally {
       setLoading(false);
     }
@@ -82,13 +101,13 @@ export default function AnimalManagementScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadAnimals();
+    await loadAllData();
     setRefreshing(false);
   };
 
   const handleAddAnimal = async () => {
     if (!formData.name.trim()) {
-      Alert.alert('Erreur', 'Veuillez entrer le nom de l\'animal');
+      Alert.alert('Erreur', "Veuillez entrer le nom de l'animal");
       return;
     }
 
@@ -104,6 +123,7 @@ export default function AnimalManagementScreen() {
 
     try {
       await animalsApi.create({
+        userId: user?.id,
         name: formData.name.trim(),
         type: formData.type,
         breed: formData.breed,
@@ -117,10 +137,10 @@ export default function AnimalManagementScreen() {
 
       setShowAddModal(false);
       resetForm();
-      loadAnimals();
+      loadAllData();
       Alert.alert('Succès', 'Animal ajouté avec succès');
-    } catch (error) {
-      Alert.alert('Erreur', error.message || 'Erreur lors de l\'ajout');
+    } catch (error: any) {
+      Alert.alert('Erreur', error.message || "Erreur lors de l'ajout");
     }
   };
 
@@ -142,16 +162,16 @@ export default function AnimalManagementScreen() {
 
       setEditingAnimal(null);
       resetForm();
-      loadAnimals();
+      loadAllData();
       Alert.alert('Succès', 'Animal modifié avec succès');
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert('Erreur', error.message || 'Erreur lors de la modification');
     }
   };
 
   const handleDeleteAnimal = (animal: Animal) => {
     Alert.alert(
-      'Supprimer l\'animal',
+      "Supprimer l'animal",
       `Êtes-vous sûr de vouloir supprimer "${animal.name}" ? Cette action supprimera aussi tous ses repas programmés.`,
       [
         { text: 'Annuler', style: 'cancel' },
@@ -161,14 +181,14 @@ export default function AnimalManagementScreen() {
           onPress: async () => {
             try {
               await animalsApi.delete(animal.id);
-              loadAnimals();
+              loadAllData();
               Alert.alert('Succès', 'Animal supprimé avec succès');
-            } catch (error) {
+            } catch (error: any) {
               Alert.alert('Erreur', error.message || 'Erreur lors de la suppression');
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -185,7 +205,7 @@ export default function AnimalManagementScreen() {
         setFormData({ ...formData, photo: result.assets[0].uri });
       }
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'accéder à la galerie photo');
+      Alert.alert('Erreur', "Impossible d'accéder à la galerie photo");
     }
   };
 
@@ -226,13 +246,8 @@ export default function AnimalManagementScreen() {
   };
 
   const getAnimalIcon = (type: string) => {
-    switch (type) {
-      case 'Chien': return '🐕';
-      case 'Chat': return '🐱';
-      case 'Lapin': return '🐰';
-      case 'Renard': return '🦊';
-      default: return '🐾';
-    }
+    const animalType = animalTypes.find((t) => t.label === type);
+    return animalType ? animalType.icon : '🐾';
   };
 
   const getActivityLevelColor = (level: number) => {
@@ -257,114 +272,110 @@ export default function AnimalManagementScreen() {
           <Text style={styles.backButton}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Gestion des animaux</Text>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={() => setShowAddModal(true)}
-        >
+        <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
           <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {animals.length > 0 ? animals.map((animal) => (
-          <View key={animal.id} style={styles.animalCard}>
-            {/* Header de la carte */}
-            <View style={styles.animalHeader}>
-              <View style={styles.animalPhotoContainer}>
-                {animal.photo ? (
-                  <Image source={{ uri: animal.photo }} style={styles.animalPhoto} />
-                ) : (
-                  <View style={styles.animalPhotoPlaceholder}>
-                    <Text style={styles.animalEmoji}>{getAnimalIcon(animal.type)}</Text>
-                  </View>
-                )}
-              </View>
-              
-              <View style={styles.animalInfo}>
-                <Text style={styles.animalName}>{animal.name}</Text>
-                <Text style={[
-                  styles.animalType,
-                  { color: animal.type === 'Chien' ? '#007AFF' : animal.type === 'Chat' ? '#FF6B6B' : '#4ECDC4' }
-                ]}>
-                  {animal.type} • {animal.breed}
-                </Text>
-                <Text style={styles.animalDetails}>
-                  {animal.gender} • {animal.age} {animal.ageUnit} • {animal.weight}kg
-                </Text>
-              </View>
-            </View>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        {animals.length > 0 ? (
+          animals.map((animal) => (
+            <View key={animal.id} style={styles.animalCard}>
+              {/* Header de la carte */}
+              <View style={styles.animalHeader}>
+                <View style={styles.animalPhotoContainer}>
+                  {animal.photo ? (
+                    <Image source={{ uri: animal.photo }} style={styles.animalPhoto} />
+                  ) : (
+                    <View style={styles.animalPhotoPlaceholder}>
+                      <Text style={styles.animalEmoji}>{getAnimalIcon(animal.type)}</Text>
+                    </View>
+                  )}
+                </View>
 
-            {/* Niveau d'activité */}
-            <View style={styles.activitySection}>
-              <Text style={styles.activityLabel}>Niveau d'activité</Text>
-              <View style={styles.activityLevelContainer}>
-                {[1, 2, 3, 4, 5].map((level) => (
-                  <View
-                    key={level}
+                <View style={styles.animalInfo}>
+                  <Text style={styles.animalName}>{animal.name}</Text>
+                  <Text
                     style={[
-                      styles.activityDot,
-                      { 
-                        backgroundColor: animal.activityLevel >= level 
-                          ? getActivityLevelColor(animal.activityLevel)
-                          : '#ddd'
-                      }
-                    ]}
-                  />
-                ))}
-                <Text style={styles.activityText}>
-                  {activityLevels.find(level => level.level === animal.activityLevel)?.label}
-                </Text>
+                      styles.animalType,
+                      {
+                        color:
+                          animal.type === 'Chien'
+                            ? '#007AFF'
+                            : animal.type === 'Chat'
+                              ? '#FF6B6B'
+                              : '#4ECDC4',
+                      },
+                    ]}>
+                    {animal.type} • {animal.breed}
+                  </Text>
+                  <Text style={styles.animalDetails}>
+                    {animal.gender} • {animal.age} {animal.ageUnit} • {animal.weight}kg
+                  </Text>
+                </View>
+              </View>
+
+              {/* Niveau d'activité */}
+              <View style={styles.activitySection}>
+                <Text style={styles.activityLabel}>Niveau d'activité</Text>
+                <View style={styles.activityLevelContainer}>
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <View
+                      key={level}
+                      style={[
+                        styles.activityDot,
+                        {
+                          backgroundColor:
+                            animal.activityLevel >= level
+                              ? getActivityLevelColor(animal.activityLevel)
+                              : '#ddd',
+                        },
+                      ]}
+                    />
+                  ))}
+                  <Text style={styles.activityText}>
+                    {activityLevels.find((level) => level.level === animal.activityLevel)?.label}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Actions */}
+              <View style={styles.animalActions}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => router.push(`/planning?animalId=${animal.id}`)}>
+                  <Ionicons name="calendar" size={16} color="#007AFF" />
+                  <Text style={styles.actionText}>Planning</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => router.push(`/analysis?animalId=${animal.id}`)}>
+                  <Ionicons name="bar-chart" size={16} color="#007AFF" />
+                  <Text style={styles.actionText}>Analyse</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.actionButton} onPress={() => openEditModal(animal)}>
+                  <Ionicons name="pencil" size={16} color="#007AFF" />
+                  <Text style={styles.actionText}>Modifier</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.deleteButton]}
+                  onPress={() => handleDeleteAnimal(animal)}>
+                  <Ionicons name="trash" size={16} color="#FF3B30" />
+                  <Text style={[styles.actionText, styles.deleteText]}>Supprimer</Text>
+                </TouchableOpacity>
               </View>
             </View>
-
-            {/* Actions */}
-            <View style={styles.animalActions}>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => router.push(`/planning?animalId=${animal.id}`)}
-              >
-                <Ionicons name="calendar" size={16} color="#007AFF" />
-                <Text style={styles.actionText}>Planning</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => router.push(`/analysis?animalId=${animal.id}`)}
-              >
-                <Ionicons name="bar-chart" size={16} color="#007AFF" />
-                <Text style={styles.actionText}>Analyse</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => openEditModal(animal)}
-              >
-                <Ionicons name="pencil" size={16} color="#007AFF" />
-                <Text style={styles.actionText}>Modifier</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.deleteButton]}
-                onPress={() => handleDeleteAnimal(animal)}
-              >
-                <Ionicons name="trash" size={16} color="#FF3B30" />
-                <Text style={[styles.actionText, styles.deleteText]}>Supprimer</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )) : (
+          ))
+        ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🐾</Text>
             <Text style={styles.emptyText}>Aucun animal enregistré</Text>
-            <TouchableOpacity 
-              style={styles.emptyButton}
-              onPress={() => setShowAddModal(true)}
-            >
+            <TouchableOpacity style={styles.emptyButton} onPress={() => setShowAddModal(true)}>
               <Text style={styles.emptyButtonText}>Ajouter votre premier animal</Text>
             </TouchableOpacity>
           </View>
@@ -372,25 +383,17 @@ export default function AnimalManagementScreen() {
       </ScrollView>
 
       {/* Modal d'ajout/modification */}
-      <Modal
-        visible={showAddModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
+      <Modal visible={showAddModal} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={closeModal}>
               <Text style={styles.modalCancel}>Annuler</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
-              {editingAnimal ? 'Modifier l\'animal' : 'Ajouter un animal'}
+              {editingAnimal ? "Modifier l'animal" : 'Ajouter un animal'}
             </Text>
-            <TouchableOpacity 
-              onPress={editingAnimal ? handleEditAnimal : handleAddAnimal}
-            >
-              <Text style={styles.modalSave}>
-                {editingAnimal ? 'Modifier' : 'Ajouter'}
-              </Text>
+            <TouchableOpacity onPress={editingAnimal ? handleEditAnimal : handleAddAnimal}>
+              <Text style={styles.modalSave}>{editingAnimal ? 'Modifier' : 'Ajouter'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -424,15 +427,14 @@ export default function AnimalManagementScreen() {
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Type d'animal</Text>
               <View style={styles.animalTypeButtons}>
-                {animalTypes.map((type) => (
+                {animalTypes.map((type: any) => (
                   <TouchableOpacity
                     key={type.label}
                     style={[
                       styles.animalTypeButton,
-                      formData.type === type.label && styles.selectedAnimalType
+                      formData.type === type.label && styles.selectedAnimalType,
                     ]}
-                    onPress={() => setFormData({ ...formData, type: type.label })}
-                  >
+                    onPress={() => setFormData({ ...formData, type: type.label })}>
                     <Text style={styles.animalTypeIcon}>{type.icon}</Text>
                   </TouchableOpacity>
                 ))}
@@ -448,14 +450,14 @@ export default function AnimalManagementScreen() {
                     key={gender}
                     style={[
                       styles.genderButton,
-                      formData.gender === gender && styles.selectedGender
+                      formData.gender === gender && styles.selectedGender,
                     ]}
-                    onPress={() => setFormData({ ...formData, gender })}
-                  >
-                    <Text style={[
-                      styles.genderText,
-                      formData.gender === gender && styles.selectedGenderText
-                    ]}>
+                    onPress={() => setFormData({ ...formData, gender })}>
+                    <Text
+                      style={[
+                        styles.genderText,
+                        formData.gender === gender && styles.selectedGenderText,
+                      ]}>
                       {gender}
                     </Text>
                   </TouchableOpacity>
@@ -466,12 +468,37 @@ export default function AnimalManagementScreen() {
             {/* Race */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Race</Text>
-              <TextInput
-                style={styles.textInput}
-                value={formData.breed}
-                onChangeText={(text) => setFormData({ ...formData, breed: text })}
-                placeholder="Ex: Labrador Retriever"
-              />
+              {filteredBreeds.length > 0 ? (
+                <View style={styles.breedButtonsContainer}>
+                  {filteredBreeds.map((breed: any, index: number) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.breedButton,
+                        formData.breed === breed.label && styles.selectedBreed,
+                      ]}
+                      onPress={() => setFormData({ ...formData, breed: breed.label })}>
+                      <Text
+                        style={[
+                          styles.breedButtonText,
+                          formData.breed === breed.label && styles.selectedBreedText,
+                        ]}>
+                        {breed.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.noBreedContainer}>
+                  <Text style={styles.noBreedText}>Aucune race disponible pour ce type</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Entrez une race personnalisée"
+                    value={formData.breed}
+                    onChangeText={(text) => setFormData({ ...formData, breed: text })}
+                  />
+                </View>
+              )}
             </View>
 
             {/* Âge et Poids */}
@@ -487,31 +514,54 @@ export default function AnimalManagementScreen() {
                 />
               </View>
               <View style={styles.halfInput}>
-                <Text style={styles.inputLabel}>Poids (kg)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={formData.weight}
-                  onChangeText={(text) => setFormData({ ...formData, weight: text })}
-                  placeholder="25.5"
-                  keyboardType="decimal-pad"
-                />
+                <Text style={styles.inputLabel}>Unité</Text>
+                <View style={styles.unitButtonsContainer}>
+                  {['Années', 'Mois'].map((unit) => (
+                    <TouchableOpacity
+                      key={unit}
+                      style={[styles.unitButton, formData.ageUnit === unit && styles.selectedUnit]}
+                      onPress={() => setFormData({ ...formData, ageUnit: unit })}>
+                      <Text
+                        style={[
+                          styles.unitButtonText,
+                          formData.ageUnit === unit && styles.selectedUnitText,
+                        ]}>
+                        {unit}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
+            </View>
+
+            {/* Poids */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Poids (kg)</Text>
+              <TextInput
+                style={styles.textInput}
+                value={formData.weight}
+                onChangeText={(text) => setFormData({ ...formData, weight: text })}
+                placeholder="25.5"
+                keyboardType="decimal-pad"
+              />
             </View>
 
             {/* Niveau d'activité */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Niveau d'activité</Text>
               <Text style={styles.activityCurrentLabel}>
-                {activityLevels.find(level => level.level === formData.activityLevel)?.label}
+                {activityLevels.find((level) => level.level === formData.activityLevel)?.label}
               </Text>
-              
+
               <View style={styles.modalActivityContainer}>
                 {[1, 2, 3, 4, 5].map((level) => (
                   <TouchableOpacity
                     key={level}
                     style={[
                       styles.modalActivityDot,
-                      formData.activityLevel >= level ? styles.modalActivityDotActive : styles.modalActivityDotInactive
+                      formData.activityLevel >= level
+                        ? styles.modalActivityDotActive
+                        : styles.modalActivityDotInactive,
                     ]}
                     onPress={() => setFormData({ ...formData, activityLevel: level })}
                   />
@@ -520,10 +570,13 @@ export default function AnimalManagementScreen() {
 
               <View style={styles.modalActivityDescription}>
                 <Text style={styles.modalActivityDescriptionTitle}>
-                  {activityLevels.find(level => level.level === formData.activityLevel)?.label}
+                  {activityLevels.find((level) => level.level === formData.activityLevel)?.label}
                 </Text>
                 <Text style={styles.modalActivityDescriptionText}>
-                  {activityLevels.find(level => level.level === formData.activityLevel)?.description}
+                  {
+                    activityLevels.find((level) => level.level === formData.activityLevel)
+                      ?.description
+                  }
                 </Text>
               </View>
             </View>
@@ -537,7 +590,7 @@ export default function AnimalManagementScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.background,
   },
   centered: {
     justifyContent: 'center',
@@ -545,61 +598,58 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl,
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: SPACING.xl,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: COLORS.border,
   },
   backButton: {
     fontSize: 24,
-    color: '#007AFF',
+    color: COLORS.accent,
     marginRight: 10,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text,
     flex: 1,
     textAlign: 'center',
     marginRight: 44,
   },
   addButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: COLORS.accent,
     width: 44,
     height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    ...SHADOWS.medium,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: SPACING.xl,
   },
   animalCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.medium,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    ...SHADOWS.medium,
   },
   animalHeader: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   animalPhotoContainer: {
-    marginRight: 16,
+    marginRight: SPACING.lg,
   },
   animalPhoto: {
     width: 80,
@@ -610,7 +660,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: COLORS.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -624,17 +674,17 @@ const styles = StyleSheet.create({
   animalName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
   },
   animalType: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: SPACING.sm,
   },
   animalDetails: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   activitySection: {
     marginBottom: 16,
@@ -895,5 +945,69 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  breedButtonsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  breedButton: {
+    flex: 1,
+    minWidth: '48%',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  selectedBreed: {
+    backgroundColor: '#4ECDC4',
+    borderColor: '#4ECDC4',
+  },
+  breedButtonText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+  selectedBreedText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  noBreedContainer: {
+    gap: 8,
+  },
+  noBreedText: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  unitButtonsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  unitButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  selectedUnit: {
+    backgroundColor: '#4ECDC4',
+    borderColor: '#4ECDC4',
+  },
+  unitButtonText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  selectedUnitText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });

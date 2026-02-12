@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Image
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authApi } from '@/utils/BaseAPI';
@@ -22,7 +22,7 @@ export default function LoginScreen() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
 
- const handleLogin = async () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs');
       return;
@@ -33,9 +33,9 @@ export default function LoginScreen() {
       const response = await authApi.login(email, password);
 
       await login(response.token, response.user);
-      
+
       Alert.alert('Succès', 'Connexion réussie', [
-        { text: 'OK', onPress: () => router.replace('/(tabs)') }
+        { text: 'OK', onPress: () => router.replace('/(tabs)') },
       ]);
     } catch (error: any) {
       Alert.alert('Erreur', error.message || 'Erreur de connexion');
@@ -45,10 +45,9 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={styles.backButton}>←</Text>
@@ -57,8 +56,8 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.logoContainer}>
-         <Image 
-          source={require('@/assets/images/logo.png')} 
+        <Image
+          source={require('@/assets/images/logo.png')}
           style={styles.logoImage}
           resizeMode="contain"
         />
@@ -83,10 +82,7 @@ export default function LoginScreen() {
         />
 
         <View style={styles.rememberContainer}>
-          <TouchableOpacity 
-            style={styles.checkbox}
-            onPress={() => setRememberMe(!rememberMe)}
-          >
+          <TouchableOpacity style={styles.checkbox} onPress={() => setRememberMe(!rememberMe)}>
             <View style={[styles.checkboxInner, rememberMe && styles.checked]} />
           </TouchableOpacity>
           <Text style={styles.rememberText}>Se souvenir de moi</Text>
@@ -95,14 +91,11 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.loginButton, loading && styles.loginButtonDisabled]}
           onPress={handleLogin}
-          disabled={loading}
-        >
-          <Text style={styles.loginButtonText}>
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </Text>
+          disabled={loading}>
+          <Text style={styles.loginButtonText}>{loading ? 'Connexion...' : 'Se connecter'}</Text>
         </TouchableOpacity>
 
         <View style={styles.registerContainer}>

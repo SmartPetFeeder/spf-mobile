@@ -1,27 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Alert,
-  Switch
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { DistributorSettings } from '@/types';
 import { distributorApi } from '@/utils/BaseAPI';
-
-interface DistributorSettings {
-  id: number;
-  name: string;
-  animalType: string;
-  autoCalibration: boolean;
-  lowLevelAlert: number;
-  maintenanceReminder: boolean;
-  soundEnabled: boolean;
-  ledEnabled: boolean;
-}
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 export default function DistributorSettingsScreen() {
   const router = useRouter();
@@ -58,13 +40,13 @@ export default function DistributorSettingsScreen() {
 
   const updateDistributorSetting = async (id: number, setting: string, value: any) => {
     try {
-      const updatedDistributors = distributors.map(d => 
-        d.id === id ? { ...d, [setting]: value } : d
+      const updatedDistributors = distributors.map((d) =>
+        d.id === id ? { ...d, [setting]: value } : d,
       );
       setDistributors(updatedDistributors);
 
       // Mettre à jour sur le serveur
-      const distributor = updatedDistributors.find(d => d.id === id);
+      const distributor = updatedDistributors.find((d) => d.id === id);
       if (distributor) {
         await distributorApi.update(id, { [setting]: value });
       }
@@ -91,9 +73,9 @@ export default function DistributorSettingsScreen() {
             } catch (error: any) {
               Alert.alert('Erreur', error.message || 'Erreur lors du calibrage');
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -112,9 +94,9 @@ export default function DistributorSettingsScreen() {
             } catch (error: any) {
               Alert.alert('Erreur', error.message || 'Erreur lors de la mise à jour');
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -139,7 +121,7 @@ export default function DistributorSettingsScreen() {
         {/* Actions globales */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Actions globales</Text>
-          
+
           <TouchableOpacity style={styles.actionItem} onPress={handleCalibrateAll}>
             <View style={styles.actionIcon}>
               <Ionicons name="settings" size={20} color="#007AFF" />
@@ -161,7 +143,7 @@ export default function DistributorSettingsScreen() {
         {distributors.map((distributor) => (
           <View key={distributor.id} style={styles.section}>
             <Text style={styles.sectionTitle}>{distributor.name}</Text>
-            
+
             <View style={styles.settingItem}>
               <View style={styles.settingContent}>
                 <Text style={styles.settingText}>Calibrage automatique</Text>
@@ -171,7 +153,9 @@ export default function DistributorSettingsScreen() {
               </View>
               <Switch
                 value={distributor.autoCalibration}
-                onValueChange={(value) => updateDistributorSetting(distributor.id, 'autoCalibration', value)}
+                onValueChange={(value) =>
+                  updateDistributorSetting(distributor.id, 'autoCalibration', value)
+                }
                 trackColor={{ false: '#767577', true: '#81b0ff' }}
                 thumbColor={distributor.autoCalibration ? '#007AFF' : '#f4f3f4'}
               />
@@ -194,7 +178,9 @@ export default function DistributorSettingsScreen() {
               </View>
               <Switch
                 value={distributor.maintenanceReminder}
-                onValueChange={(value) => updateDistributorSetting(distributor.id, 'maintenanceReminder', value)}
+                onValueChange={(value) =>
+                  updateDistributorSetting(distributor.id, 'maintenanceReminder', value)
+                }
                 trackColor={{ false: '#767577', true: '#81b0ff' }}
                 thumbColor={distributor.maintenanceReminder ? '#007AFF' : '#f4f3f4'}
               />
@@ -209,7 +195,9 @@ export default function DistributorSettingsScreen() {
               </View>
               <Switch
                 value={distributor.soundEnabled}
-                onValueChange={(value) => updateDistributorSetting(distributor.id, 'soundEnabled', value)}
+                onValueChange={(value) =>
+                  updateDistributorSetting(distributor.id, 'soundEnabled', value)
+                }
                 trackColor={{ false: '#767577', true: '#81b0ff' }}
                 thumbColor={distributor.soundEnabled ? '#007AFF' : '#f4f3f4'}
               />
@@ -218,13 +206,13 @@ export default function DistributorSettingsScreen() {
             <View style={styles.settingItem}>
               <View style={styles.settingContent}>
                 <Text style={styles.settingText}>Témoin LED</Text>
-                <Text style={styles.settingDescription}>
-                  Indicateur lumineux de statut
-                </Text>
+                <Text style={styles.settingDescription}>Indicateur lumineux de statut</Text>
               </View>
               <Switch
                 value={distributor.ledEnabled}
-                onValueChange={(value) => updateDistributorSetting(distributor.id, 'ledEnabled', value)}
+                onValueChange={(value) =>
+                  updateDistributorSetting(distributor.id, 'ledEnabled', value)
+                }
                 trackColor={{ false: '#767577', true: '#81b0ff' }}
                 thumbColor={distributor.ledEnabled ? '#007AFF' : '#f4f3f4'}
               />

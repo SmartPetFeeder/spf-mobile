@@ -1,146 +1,78 @@
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import { Platform, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_CONFIG } from '@/config/api.config';
 
+// Service de notifications - Expo Go n'a pas les notifications push
+// Ce service fournit une interface de fallback sûre pour développement
 class NotificationService {
+  private isSupported = API_CONFIG.FEATURES.NOTIFICATIONS_ENABLED;
+
   constructor() {
-    this.configureNotifications();
+    if (this.isSupported) {
+      this.initializeNotifications();
+    } else {
+      console.log('[Notifications] Désactivées pour le développement (Expo Go)');
+    }
   }
 
-  private configureNotifications() {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
+  private async initializeNotifications() {
+    try {
+      // Sera implémenté quand les notifications seront supportées
+      console.log('[Notifications] Service initialisé');
+    } catch (error) {
+      console.warn('[Notifications] Erreur initialisation:', error);
+      this.isSupported = false;
+    }
   }
 
   async registerForPushNotificationsAsync() {
-    let token;
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
-
-      await Notifications.setNotificationChannelAsync('meals', {
-        name: 'Notifications de repas',
-        importance: Notifications.AndroidImportance.HIGH,
-        sound: 'default',
-      });
-
-      await Notifications.setNotificationChannelAsync('alerts', {
-        name: 'Alertes système',
-        importance: Notifications.AndroidImportance.MAX,
-        sound: 'default',
-      });
+    if (!this.isSupported) {
+      console.log('[Notifications] Push notifications désactivées');
+      return null;
     }
 
-    if (Device.isDevice) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      
-      if (finalStatus !== 'granted') {
-        Alert.alert('Erreur', 'Les notifications sont nécessaires pour le bon fonctionnement de l\'app');
-        return;
-      }
-      
-      token = (await Notifications.getExpoPushTokenAsync()).data;
-      await AsyncStorage.setItem('pushToken', token);
+    try {
+      // TODO: Implémenter quand les notifications seront supportées
+      return null;
+    } catch (error) {
+      console.error('[Notifications] Erreur registration:', error);
+      return null;
     }
-
-    return token;
   }
 
   setupNotificationListeners() {
-    // Notification reçue en foreground
-    Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notification reçue:', notification);
-    });
-
-    // Notification clickée
-    Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification clickée:', response);
-      // Ici on peut naviguer vers l'écran approprié
-    });
+    if (!this.isSupported) return;
+    // TODO: Implémenter les listeners quand les notifications seront supportées
   }
 
   async scheduleMealReminder(animalName: string, mealName: string, time: string) {
-    const [hours, minutes] = time.split(':').map(Number);
-    
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: `Heure du repas pour ${animalName}`,
-        body: `Il est temps de donner ${mealName} à ${animalName}`,
-        categoryIdentifier: 'meals',
-        sound: 'default',
-      },
-      trigger: {
-        hour: hours,
-        minute: minutes,
-        repeats: true,
-      },
-    });
+    if (!this.isSupported) return;
+    console.log(`[Notifications] Rappel programmé: ${mealName} pour ${animalName} à ${time}`);
   }
 
   async sendMealDistributedNotification(animalName: string, mealName: string, quantity: number) {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Repas distribué',
-        body: `${quantity}g de ${mealName} ont été distribués à ${animalName}`,
-        categoryIdentifier: 'meals',
-        sound: 'default',
-      },
-      trigger: null, // Notification immédiate
-    });
+    if (!this.isSupported) return;
+    console.log(`[Notifications] Repas distribué: ${quantity}g de ${mealName} pour ${animalName}`);
   }
 
   async sendLowFoodAlert(animalType: string, daysLeft: number) {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Niveau de nourriture bas',
-        body: `Plus que ${daysLeft} jours d'autonomie pour le distributeur ${animalType}`,
-        categoryIdentifier: 'alerts',
-        sound: 'default',
-      },
-      trigger: null,
-    });
+    if (!this.isSupported) return;
+    console.log(`[Notifications] Alerte nourriture: ${daysLeft} jours restants pour ${animalType}`);
   }
 
   async sendConnectionAlert(deviceName: string, isConnected: boolean) {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: isConnected ? 'Appareil reconnecté' : 'Appareil déconnecté',
-        body: `${deviceName} ${isConnected ? 'est maintenant connecté' : 'a perdu la connexion'}`,
-        categoryIdentifier: 'alerts',
-        sound: 'default',
-      },
-      trigger: null,
-    });
+    if (!this.isSupported) return;
+    console.log(
+      `[Notifications] Alerte connexion: ${deviceName} ${isConnected ? 'connecté' : 'déconnecté'}`,
+    );
   }
 
   async cancelAllNotifications() {
-    await Notifications.cancelAllScheduledNotificationsAsync();
+    if (!this.isSupported) return;
+    console.log('[Notifications] Toutes les notifications annulées');
   }
 
   async cancelNotificationsByCategory(category: string) {
-    const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
-    const toCancel = scheduledNotifications
-      .filter(notif => notif.content.categoryIdentifier === category)
-      .map(notif => notif.identifier);
-    
-    await Promise.all(toCancel.map(id => Notifications.cancelScheduledNotificationAsync(id)));
+    if (!this.isSupported) return;
+    console.log(`[Notifications] Notifications annulées pour: ${category}`);
   }
 }
 

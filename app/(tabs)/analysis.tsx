@@ -1,35 +1,57 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Alert,
-  Dimensions,
-  RefreshControl
-} from 'react-native';
+import { BORDER_RADIUS, COLORS, SHADOWS, SPACING } from '@/constants/ThemeColors';
+import { useAuth } from '@/hooks/useAuth';
+import { Animal, DashboardStats, Statistics } from '@/types';
+import { animalsApi, statisticsApi } from '@/utils/BaseAPI';
 import { Ionicons } from '@expo/vector-icons';
-import { statisticsApi, animalsApi, distributorApi } from '@/utils/BaseAPI';
+import { useEffect, useState } from 'react';
+import {
+    Alert,
+    Dimensions,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function AnalysisScreen() {
+  const { user } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState('Jour');
-  const [selectedDate, setSelectedDate] = useState('Mardi 23 Avril');
+  const today = new Date();
+  const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+  const monthNames = [
+    'Janvier',
+    'Février',
+    'Mars',
+    'Avril',
+    'Mai',
+    'Juin',
+    'Juillet',
+    'Août',
+    'Septembre',
+    'Octobre',
+    'Novembre',
+    'Décembre',
+  ];
+  const currentDateStr = `${dayNames[today.getDay()]} ${today.getDate()} ${monthNames[today.getMonth()]}`;
+
+  const [selectedDate, setSelectedDate] = useState(currentDateStr);
   const [selectedAnimal, setSelectedAnimal] = useState('Tous');
-  const [animals, setAnimals] = useState([]);
-  const [statistics, setStatistics] = useState([]);
+  const [animals, setAnimals] = useState<Animal[]>([]);
+  const [statistics, setStatistics] = useState<Statistics[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [currentStats, setCurrentStats] = useState({
+  const [currentStats, setCurrentStats] = useState<DashboardStats>({
     meals: '0/0',
     consumed: '0g',
     speed: '0g/min',
     goal: '0%',
     totalDistributed: 0,
     averageTime: 0,
-    successRate: 100
+    successRate: 100,
   });
 
   const periods = ['Jour', 'Semaine', 'Mois', 'Année'];
@@ -42,17 +64,28 @@ export default function AnalysisScreen() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [animalsData, statsData] = await Promise.all([
-        animalsApi.getAll(),
-        statisticsApi.getAll()
-      ]);
-      
+      console.log("[Analysis] Début du chargement des données pour l'utilisateur:", user?.id);
+
+      // Charger les animaux et statistiques de l'utilisateur courant
+      const animalsData = user?.id
+        ? await animalsApi.getByUser(user.id)
+        : await animalsApi.getAll();
+
+      const statsData = user?.id
+        ? await statisticsApi.getByUser(user.id)
+        : await statisticsApi.getAll();
+
+      console.log('[Analysis] Animaux chargés:', animalsData);
+      console.log('[Analysis] Statistiques chargées:', statsData);
+
       setAnimals(animalsData || []);
       setStatistics(statsData || []);
       processStatistics(statsData || []);
+
+      console.log('[Analysis] Chargement réussi');
     } catch (error) {
-      console.error('Erreur lors du chargement des données:', error);
-      Alert.alert('Erreur', 'Impossible de charger les données d\'analyse');
+      console.error('[Analysis] Erreur:', error);
+      Alert.alert('Erreur', "Impossible de charger les données d'analyse");
     } finally {
       setLoading(false);
     }
@@ -64,8 +97,12 @@ export default function AnalysisScreen() {
     setRefreshing(false);
   };
 
-  const processStatistics = (statsData) => {
+  const processStatistics = (statsData: Statistics[]) => {
+    console.log('[Analysis] Traitement des stats - données reçues:', statsData);
+    console.log('[Analysis] Animal sélectionné:', selectedAnimal);
+
     if (statsData.length === 0) {
+      console.warn('[Analysis] Aucune statistique disponible');
       setCurrentStats({
         meals: '0/0',
         consumed: '0g',
@@ -73,7 +110,7 @@ export default function AnalysisScreen() {
         goal: '0%',
         totalDistributed: 0,
         averageTime: 0,
-        successRate: 100
+        successRate: 100,
       });
       return;
     }
@@ -81,18 +118,23 @@ export default function AnalysisScreen() {
     // Filtrer par animal si sélectionné
     let filteredStats = statsData;
     if (selectedAnimal !== 'Tous') {
-      const selectedAnimalData = animals.find(a => a.name === selectedAnimal);
+      const selectedAnimalData = animals.find((a) => a.name === selectedAnimal);
+      console.log('[Analysis] Animal sélectionné:', selectedAnimalData);
       if (selectedAnimalData) {
-        filteredStats = statsData.filter(s => s.animalId === selectedAnimalData.id);
+        filteredStats = statsData.filter((s) => s.animalId === selectedAnimalData.id);
       }
     }
 
+    console.log('[Analysis] Stats filtrées:', filteredStats);
+
     // Calculer les statistiques selon la période
     let processedStats = calculatePeriodStats(filteredStats);
+    console.log('[Analysis] Stats calculées:', processedStats);
+
     setCurrentStats(processedStats);
   };
 
-  const calculatePeriodStats = (statsData) => {
+  const calculatePeriodStats = (statsData: Statistics[]) => {
     if (statsData.length === 0) {
       return {
         meals: '0/0',
@@ -101,21 +143,31 @@ export default function AnalysisScreen() {
         goal: '0%',
         totalDistributed: 0,
         averageTime: 0,
-        successRate: 100
+        successRate: 100,
       };
     }
 
-    const totalConsumed = statsData.reduce((sum, stat) => sum + (stat.totalConsumed || 0), 0);
-    const totalDistributed = statsData.reduce((sum, stat) => sum + (stat.totalDistributed || 0), 0);
-    const totalMeals = statsData.reduce((sum, stat) => sum + (stat.mealsCount || 0), 0);
-    const averageTime = statsData.reduce((sum, stat) => sum + (stat.averageConsumptionTime || 0), 0) / statsData.length;
-    const averageRegularity = statsData.reduce((sum, stat) => sum + (stat.regularity || 0), 0) / statsData.length;
-    
+    const totalConsumed = statsData.reduce(
+      (sum: number, stat) => sum + (stat.totalConsumed || 0),
+      0,
+    );
+    const totalDistributed = statsData.reduce(
+      (sum: number, stat) => sum + (stat.totalDistributed || 0),
+      0,
+    );
+    const totalMeals = statsData.reduce((sum: number, stat) => sum + (stat.mealsCount || 0), 0);
+    const averageTime =
+      statsData.reduce((sum: number, stat) => sum + (stat.averageConsumptionTime || 0), 0) /
+      statsData.length;
+    const averageRegularity =
+      statsData.reduce((sum: number, stat) => sum + (stat.regularity || 0), 0) / statsData.length;
+
     // Calcul de la vitesse moyenne (g/min)
     const speed = averageTime > 0 ? (totalConsumed / totalMeals / averageTime).toFixed(1) : 0;
-    
+
     // Taux de réussite basé sur consumed/distributed
-    const successRate = totalDistributed > 0 ? Math.round((totalConsumed / totalDistributed) * 100) : 100;
+    const successRate =
+      totalDistributed > 0 ? Math.round((totalConsumed / totalDistributed) * 100) : 100;
 
     return {
       meals: `${totalMeals}/${totalMeals}`, // Ajuster selon la logique métier
@@ -124,7 +176,7 @@ export default function AnalysisScreen() {
       goal: `${Math.round(averageRegularity)}%`,
       totalDistributed,
       averageTime: Math.round(averageTime),
-      successRate
+      successRate,
     };
   };
 
@@ -136,24 +188,47 @@ export default function AnalysisScreen() {
         animal: selectedAnimal,
         date: selectedDate,
         statistics: currentStats,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       // En production, ici on enverrait les données à un service d'exportation
       Alert.alert(
-        'Exportation réussie', 
+        'Exportation réussie',
         `Les données ${selectedPeriod.toLowerCase()} ont été exportées avec succès.\n\nPériode: ${selectedPeriod}\nAnimal: ${selectedAnimal}\nConsommation: ${currentStats.consumed}`,
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
       );
     } catch (error) {
-      Alert.alert('Erreur', 'Erreur lors de l\'exportation des données');
+      Alert.alert('Erreur', "Erreur lors de l'exportation des données");
     }
   };
 
-  const navigateDate = (direction) => {
-    // Logique pour naviguer entre les dates selon la période
-    // Pour la démo, on garde la même date
-    console.log(`Navigation ${direction} pour la période ${selectedPeriod}`);
+  const navigateDate = (direction: 'previous' | 'next') => {
+    const newDate = new Date(today);
+
+    if (direction === 'previous') {
+      if (selectedPeriod === 'Jour') {
+        newDate.setDate(today.getDate() - 1);
+      } else if (selectedPeriod === 'Semaine') {
+        newDate.setDate(today.getDate() - 7);
+      } else if (selectedPeriod === 'Mois') {
+        newDate.setMonth(today.getMonth() - 1);
+      } else if (selectedPeriod === 'Année') {
+        newDate.setFullYear(today.getFullYear() - 1);
+      }
+    } else {
+      if (selectedPeriod === 'Jour') {
+        newDate.setDate(today.getDate() + 1);
+      } else if (selectedPeriod === 'Semaine') {
+        newDate.setDate(today.getDate() + 7);
+      } else if (selectedPeriod === 'Mois') {
+        newDate.setMonth(today.getMonth() + 1);
+      } else if (selectedPeriod === 'Année') {
+        newDate.setFullYear(today.getFullYear() + 1);
+      }
+    }
+
+    const newDateStr = `${dayNames[newDate.getDay()]} ${newDate.getDate()} ${monthNames[newDate.getMonth()]}`;
+    setSelectedDate(newDateStr);
   };
 
   if (loading) {
@@ -173,12 +248,9 @@ export default function AnalysisScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         {/* Sélecteur de période */}
         <View style={styles.periodSelector}>
           {periods.map((period) => (
@@ -186,14 +258,11 @@ export default function AnalysisScreen() {
               key={period}
               style={[
                 styles.periodButton,
-                selectedPeriod === period && styles.selectedPeriodButton
+                selectedPeriod === period && styles.selectedPeriodButton,
               ]}
-              onPress={() => setSelectedPeriod(period)}
-            >
-              <Text style={[
-                styles.periodText,
-                selectedPeriod === period && styles.selectedPeriodText
-              ]}>
+              onPress={() => setSelectedPeriod(period)}>
+              <Text
+                style={[styles.periodText, selectedPeriod === period && styles.selectedPeriodText]}>
                 {period}
               </Text>
             </TouchableOpacity>
@@ -206,14 +275,14 @@ export default function AnalysisScreen() {
             <TouchableOpacity
               style={[
                 styles.animalButton,
-                selectedAnimal === 'Tous' && styles.selectedAnimalButton
+                selectedAnimal === 'Tous' && styles.selectedAnimalButton,
               ]}
-              onPress={() => setSelectedAnimal('Tous')}
-            >
-              <Text style={[
-                styles.animalButtonText,
-                selectedAnimal === 'Tous' && styles.selectedAnimalButtonText
-              ]}>
+              onPress={() => setSelectedAnimal('Tous')}>
+              <Text
+                style={[
+                  styles.animalButtonText,
+                  selectedAnimal === 'Tous' && styles.selectedAnimalButtonText,
+                ]}>
                 Tous
               </Text>
             </TouchableOpacity>
@@ -222,14 +291,14 @@ export default function AnalysisScreen() {
                 key={animal.id}
                 style={[
                   styles.animalButton,
-                  selectedAnimal === animal.name && styles.selectedAnimalButton
+                  selectedAnimal === animal.name && styles.selectedAnimalButton,
                 ]}
-                onPress={() => setSelectedAnimal(animal.name)}
-              >
-                <Text style={[
-                  styles.animalButtonText,
-                  selectedAnimal === animal.name && styles.selectedAnimalButtonText
-                ]}>
+                onPress={() => setSelectedAnimal(animal.name)}>
+                <Text
+                  style={[
+                    styles.animalButtonText,
+                    selectedAnimal === animal.name && styles.selectedAnimalButtonText,
+                  ]}>
                   {animal.name}
                 </Text>
               </TouchableOpacity>
@@ -239,17 +308,11 @@ export default function AnalysisScreen() {
 
         {/* Navigation de date */}
         <View style={styles.dateContainer}>
-          <TouchableOpacity 
-            style={styles.dateNavButton}
-            onPress={() => navigateDate('previous')}
-          >
+          <TouchableOpacity style={styles.dateNavButton} onPress={() => navigateDate('previous')}>
             <Text style={styles.dateNavIcon}>←</Text>
           </TouchableOpacity>
           <Text style={styles.dateText}>{selectedDate}</Text>
-          <TouchableOpacity 
-            style={styles.dateNavButton}
-            onPress={() => navigateDate('next')}
-          >
+          <TouchableOpacity style={styles.dateNavButton} onPress={() => navigateDate('next')}>
             <Text style={styles.dateNavIcon}>→</Text>
           </TouchableOpacity>
         </View>
@@ -285,14 +348,14 @@ export default function AnalysisScreen() {
               const height = Math.random() * 100 + 20; // Données simulées
               return (
                 <View key={day} style={styles.barContainer}>
-                  <View 
+                  <View
                     style={[
-                      styles.bar, 
-                      { 
+                      styles.bar,
+                      {
                         height: height,
-                        backgroundColor: index === 1 ? '#007AFF' : '#4ECDC4' // Highlight mardi
-                      }
-                    ]} 
+                        backgroundColor: index === 1 ? '#007AFF' : '#4ECDC4', // Highlight mardi
+                      },
+                    ]}
                   />
                   <Text style={styles.barLabel}>{day}</Text>
                 </View>
@@ -304,7 +367,7 @@ export default function AnalysisScreen() {
         {/* Détails avancés */}
         <View style={styles.detailsContainer}>
           <Text style={styles.detailsTitle}>Détails avancés</Text>
-          
+
           <View style={styles.detailCard}>
             <View style={styles.detailHeader}>
               <Ionicons name="time" size={20} color="#007AFF" />
@@ -319,11 +382,19 @@ export default function AnalysisScreen() {
               <Ionicons name="trending-up" size={20} color="#4CD964" />
               <Text style={styles.detailCardTitle}>Taux de réussite</Text>
             </View>
-            <Text style={[
-              styles.detailValue,
-              { color: currentStats.successRate >= 90 ? '#4CD964' : currentStats.successRate >= 70 ? '#FF9500' : '#FF3B30' }
-            ]}>
-              {currentStats.successRate}%
+            <Text
+              style={[
+                styles.detailValue,
+                {
+                  color:
+                    (currentStats.successRate ?? 0) >= 90
+                      ? '#4CD964'
+                      : (currentStats.successRate ?? 0) >= 70
+                        ? '#FF9500'
+                        : '#FF3B30',
+                },
+              ]}>
+              {currentStats.successRate ?? 0}%
             </Text>
             <Text style={styles.detailDescription}>Nourriture consommée vs distribuée</Text>
           </View>
@@ -341,17 +412,16 @@ export default function AnalysisScreen() {
         {/* Tendances et insights */}
         <View style={styles.insightsContainer}>
           <Text style={styles.insightsTitle}>Insights et tendances</Text>
-          
+
           <View style={styles.insightCard}>
             <Ionicons name="analytics" size={24} color="#007AFF" />
             <View style={styles.insightContent}>
               <Text style={styles.insightText}>
-                {currentStats.successRate >= 90 
-                  ? "Excellent! Vos animaux consomment régulièrement leur nourriture."
-                  : currentStats.successRate >= 70
-                  ? "Bon rythme de consommation, mais il y a de la marge d'amélioration."
-                  : "Attention: taux de consommation faible. Vérifiez la santé de vos animaux."
-                }
+                {(currentStats.successRate ?? 0) >= 90
+                  ? 'Excellent! Vos animaux consomment régulièrement leur nourriture.'
+                  : (currentStats.successRate ?? 0) >= 70
+                    ? "Bon rythme de consommation, mais il y a de la marge d'amélioration."
+                    : 'Attention: taux de consommation faible. Vérifiez la santé de vos animaux.'}
               </Text>
             </View>
           </View>
@@ -360,12 +430,11 @@ export default function AnalysisScreen() {
             <Ionicons name="time" size={24} color="#4ECDC4" />
             <View style={styles.insightContent}>
               <Text style={styles.insightText}>
-                {currentStats.averageTime < 30
+                {(currentStats.averageTime ?? 0) < 30
                   ? "Vos animaux mangent rapidement. Surveillez qu'ils mâchent bien."
-                  : currentStats.averageTime > 60
-                  ? "Prise de repas lente, cela peut être normal selon l'animal."
-                  : "Vitesse de consommation normale et saine."
-                }
+                  : (currentStats.averageTime ?? 0) > 60
+                    ? "Prise de repas lente, cela peut être normal selon l'animal."
+                    : 'Vitesse de consommation normale et saine.'}
               </Text>
             </View>
           </View>
@@ -375,11 +444,10 @@ export default function AnalysisScreen() {
               <Ionicons name="heart" size={24} color="#FF3B30" />
               <View style={styles.insightContent}>
                 <Text style={styles.insightText}>
-                  Conseils personnalisés pour {selectedAnimal} : 
-                  {currentStats.goal >= 90
-                    ? " Continuez cette excellente routine !"
-                    : " Essayez d'établir des horaires plus réguliers."
-                  }
+                  Conseils personnalisés pour {selectedAnimal} :
+                  {parseInt(currentStats.goal ?? '0') >= 90
+                    ? ' Continuez cette excellente routine !'
+                    : " Essayez d'établir des horaires plus réguliers."}
                 </Text>
               </View>
             </View>
@@ -399,7 +467,7 @@ export default function AnalysisScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.background,
   },
   centered: {
     justifyContent: 'center',
@@ -407,119 +475,119 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl,
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: COLORS.border,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text,
   },
   exportButton: {
-    padding: 8,
+    padding: SPACING.sm,
   },
   content: {
     flex: 1,
   },
   periodSelector: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 16,
-    marginTop: 10,
+    paddingVertical: SPACING.lg,
+    marginTop: SPACING.md,
   },
   periodButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.border,
   },
   selectedPeriodButton: {
-    backgroundColor: '#4ECDC4',
+    backgroundColor: COLORS.secondary,
   },
   periodText: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textSecondary,
     fontWeight: '600',
   },
   selectedPeriodText: {
-    color: '#fff',
+    color: COLORS.white,
   },
   animalSelector: {
-    backgroundColor: '#fff',
-    paddingVertical: 16,
-    marginTop: 2,
+    backgroundColor: COLORS.white,
+    paddingVertical: SPACING.lg,
+    marginTop: SPACING.sm,
   },
   animalButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#f0f0f0',
-    marginLeft: 12,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.medium,
+    backgroundColor: COLORS.border,
+    marginLeft: SPACING.md,
   },
   selectedAnimalButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: COLORS.accent,
   },
   animalButtonText: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
   selectedAnimalButtonText: {
-    color: '#fff',
+    color: COLORS.white,
   },
   dateContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginTop: 2,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.lg,
+    marginTop: SPACING.sm,
   },
   dateNavButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: COLORS.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   dateNavIcon: {
     fontSize: 18,
-    color: '#007AFF',
+    color: COLORS.accent,
   },
   dateText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: COLORS.text,
   },
   summaryContainer: {
-    backgroundColor: '#fff',
-    paddingVertical: 20,
-    marginTop: 10,
+    backgroundColor: COLORS.white,
+    paddingVertical: SPACING.xl,
+    marginTop: SPACING.md,
   },
   summaryTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    color: COLORS.text,
+    paddingHorizontal: SPACING.xl,
+    marginBottom: SPACING.lg,
   },
   summaryStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl,
   },
   statItem: {
     alignItems: 'center',
@@ -527,31 +595,31 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
   },
   statValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text,
   },
   chartContainer: {
-    backgroundColor: '#fff',
-    marginTop: 10,
-    paddingVertical: 20,
+    backgroundColor: COLORS.white,
+    marginTop: SPACING.md,
+    paddingVertical: SPACING.xl,
   },
   chartTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    color: COLORS.text,
+    paddingHorizontal: SPACING.xl,
+    marginBottom: SPACING.lg,
   },
   chartArea: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'flex-end',
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl,
     height: 120,
   },
   barContainer: {
@@ -561,97 +629,100 @@ const styles = StyleSheet.create({
   bar: {
     width: 20,
     borderRadius: 10,
-    marginBottom: 8,
+    marginBottom: SPACING.md,
   },
   barLabel: {
     fontSize: 12,
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   detailsContainer: {
-    backgroundColor: '#fff',
-    marginTop: 10,
-    paddingVertical: 20,
+    backgroundColor: COLORS.white,
+    marginTop: SPACING.md,
+    paddingVertical: SPACING.xl,
   },
   detailsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    color: COLORS.text,
+    paddingHorizontal: SPACING.xl,
+    marginBottom: SPACING.lg,
   },
   detailCard: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
+    marginHorizontal: SPACING.xl,
+    marginBottom: SPACING.lg,
+    padding: SPACING.lg,
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.medium,
+    ...SHADOWS.small,
   },
   detailHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: SPACING.md,
   },
   detailCardTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginLeft: 8,
+    color: COLORS.text,
+    marginLeft: SPACING.md,
   },
   detailValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#007AFF',
-    marginBottom: 4,
+    color: COLORS.accent,
+    marginBottom: SPACING.sm,
   },
   detailDescription: {
     fontSize: 12,
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   insightsContainer: {
-    backgroundColor: '#fff',
-    marginTop: 10,
-    paddingVertical: 20,
+    backgroundColor: COLORS.white,
+    marginTop: SPACING.md,
+    paddingVertical: SPACING.xl,
   },
   insightsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    color: COLORS.text,
+    paddingHorizontal: SPACING.xl,
+    marginBottom: SPACING.lg,
   },
   insightCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginHorizontal: 20,
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
+    marginHorizontal: SPACING.xl,
+    marginBottom: SPACING.lg,
+    padding: SPACING.lg,
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.medium,
+    ...SHADOWS.small,
   },
   insightContent: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: SPACING.md,
   },
   insightText: {
     fontSize: 14,
-    color: '#333',
+    color: COLORS.text,
     lineHeight: 20,
   },
   exportDetailButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4ECDC4',
-    marginHorizontal: 20,
-    marginTop: 20,
+    backgroundColor: COLORS.secondary,
+    marginHorizontal: SPACING.xl,
+    marginTop: SPACING.xl,
     marginBottom: 30,
-    paddingVertical: 16,
-    borderRadius: 25,
+    paddingVertical: SPACING.lg,
+    borderRadius: BORDER_RADIUS.round,
+    ...SHADOWS.small,
   },
   exportDetailButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 8,
+    marginLeft: SPACING.md,
   },
 });

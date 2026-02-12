@@ -1,31 +1,56 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  TextInput,
-  Alert
-} from 'react-native';
+import { useAuth } from '@/hooks/useAuth';
+import { animalsApi, distributorApi } from '@/utils/BaseAPI';
+import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
-import { distributorApi } from '@/utils/BaseAPI';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function AddDistributorScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
-    animalType: 'Chien',
+    animalId: null,
     maxCapacity: '2000',
     location: '',
   });
+  const [animals, setAnimals] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const animalTypes = ['Chien', 'Chat', 'Lapin', 'Autre'];
+  useEffect(() => {
+    loadAnimals();
+  }, []);
+
+  const loadAnimals = async () => {
+    try {
+      const animalsData = user?.id
+        ? await animalsApi.getByUser(user.id)
+        : await animalsApi.getAll();
+      setAnimals(animalsData || []);
+      if (animalsData && animalsData.length > 0) {
+        setFormData((prev) => ({ ...prev, animalId: animalsData[0].id }));
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des animaux:', error);
+    }
+  };
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
       Alert.alert('Erreur', 'Veuillez entrer le nom de la mangeoire');
+      return;
+    }
+
+    if (!formData.animalId) {
+      Alert.alert('Erreur', 'Veuillez sélectionner un animal');
       return;
     }
 
@@ -37,8 +62,9 @@ export default function AddDistributorScreen() {
     setLoading(true);
     try {
       const newDistributor = {
+        userId: user?.id,
+        animalId: formData.animalId,
         name: formData.name.trim(),
-        animalType: formData.animalType,
         maxCapacity: parseInt(formData.maxCapacity),
         location: formData.location.trim(),
         currentLevel: 100,
@@ -51,10 +77,10 @@ export default function AddDistributorScreen() {
       await distributorApi.create(newDistributor);
 
       Alert.alert('Succès', 'Mangeoire ajoutée avec succès', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error) {
-      Alert.alert('Erreur', error.message || 'Erreur lors de l\'ajout de la mangeoire');
+      Alert.alert('Erreur', error.message || "Erreur lors de l'ajout de la mangeoire");
     } finally {
       setLoading(false);
     }
@@ -82,6 +108,22 @@ export default function AddDistributorScreen() {
           </View>
         </View>
 
+        {/* Animal */}
+        <View style={styles.inputSection}>
+          <Text style={styles.label}>Animal</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={formData.animalId}
+              style={styles.picker}
+              onValueChange={(animalId) => setFormData({ ...formData, animalId })}>
+              <Picker.Item label="Sélectionner un animal" value={null} />
+              {animals.map((animal) => (
+                <Picker.Item key={animal.id} label={animal.name} value={animal.id} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+
         {/* Nom de la mangeoire */}
         <View style={styles.inputSection}>
           <Text style={styles.label}>Nom de la mangeoire</Text>
@@ -91,30 +133,6 @@ export default function AddDistributorScreen() {
             value={formData.name}
             onChangeText={(text) => setFormData({ ...formData, name: text })}
           />
-        </View>
-
-        {/* Type d'animal */}
-        <View style={styles.inputSection}>
-          <Text style={styles.label}>Type d'animal</Text>
-          <View style={styles.animalTypeButtons}>
-            {animalTypes.map((type) => (
-              <TouchableOpacity
-                key={type}
-                style={[
-                  styles.animalTypeButton,
-                  formData.animalType === type && styles.selectedAnimalType
-                ]}
-                onPress={() => setFormData({ ...formData, animalType: type })}
-              >
-                <Text style={[
-                  styles.animalTypeText,
-                  formData.animalType === type && styles.selectedAnimalTypeText
-                ]}>
-                  {type}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </View>
 
         {/* Capacité maximale */}
@@ -141,9 +159,7 @@ export default function AddDistributorScreen() {
             value={formData.location}
             onChangeText={(text) => setFormData({ ...formData, location: text })}
           />
-          <Text style={styles.helperText}>
-            Où se trouve cette mangeoire dans votre domicile
-          </Text>
+          <Text style={styles.helperText}>Où se trouve cette mangeoire dans votre domicile</Text>
         </View>
 
         {/* Informations de configuration */}
@@ -161,8 +177,8 @@ export default function AddDistributorScreen() {
         <View style={styles.noteSection}>
           <Text style={styles.noteTitle}>📌 Note importante</Text>
           <Text style={styles.noteText}>
-            Assurez-vous que votre mangeoire est connectée au Wi-Fi et qu'elle 
-            est allumée avant de l'ajouter à l'application.
+            Assurez-vous que votre mangeoire est connectée au Wi-Fi et qu'elle est allumée avant de
+            l'ajouter à l'application.
           </Text>
         </View>
       </ScrollView>
@@ -248,31 +264,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontStyle: 'italic',
   },
-  animalTypeButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  animalTypeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+  pickerContainer: {
     borderWidth: 1,
     borderColor: '#ddd',
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
   },
-  selectedAnimalType: {
-    backgroundColor: '#4ECDC4',
-    borderColor: '#4ECDC4',
-  },
-  animalTypeText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  selectedAnimalTypeText: {
-    color: '#fff',
-    fontWeight: '600',
+  picker: {
+    height: 50,
   },
   infoSection: {
     marginBottom: 20,

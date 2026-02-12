@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "smartpetfeeder",
-    "slug": "smartpetfeeder",
+    "name": "Smart Pet Feeder",
+    "slug": "spf-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "smartpetfeeder",
+    "icon": "./assets/images/logo.png",
+    "scheme": "spfmobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -23,9 +23,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "NOTIFICATIONS"
-      ]
+      "permissions": ["NOTIFICATIONS"]
     },
     "web": {
       "bundler": "metro",
@@ -39,9 +37,7 @@
         {
           "icon": "./assets/images/notification-icon.png",
           "color": "#4ECDC4",
-          "sounds": [
-            "./assets/sounds/notification.wav"
-          ]
+          "sounds": ["./assets/sounds/notification.wav"]
         }
       ],
       "expo-font",

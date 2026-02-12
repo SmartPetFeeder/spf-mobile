@@ -1,52 +1,212 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Alert,
-  Switch 
+import { BORDER_RADIUS, COLORS, SHADOWS, SPACING } from '@/constants/ThemeColors';
+import { useAuth } from '@/hooks/useAuth';
+import { Animal, Distributor, Meal } from '@/types';
+import { animalsApi, distributorApi, mealsApi, planningApi } from '@/utils/BaseAPI';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { planningApi } from '@/utils/BaseAPI';
 
 export default function PlanningScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [applyToAllDays, setApplyToAllDays] = useState(true);
-  const [selectedDay, setSelectedDay] = useState(1);
-  const [meals, setMeals] = useState([
-    { id: 1, name: 'Petit déjeuner', time: '08:00', amount: '40g', enabled: true },
-    { id: 2, name: 'Déjeuner', time: '12:30', amount: '60g', enabled: true },
-    { id: 3, name: 'Dîner', time: '19:00', amount: '60g', enabled: false },
-  ]);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [animals, setAnimals] = useState<Animal[]>([]);
+  const [distributors, setDistributors] = useState<Distributor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
 
-  const days = [
-    { label: 'LUN', value: 0 },
-    { label: 'MAR', value: 1 },
-    { label: 'MER', value: 2 },
-    { label: 'JEU', value: 3 },
-    { label: 'VEN', value: 4 },
-    { label: 'SAM', value: 5 },
-    { label: 'DIM', value: 6 },
+  // Fonctions utilitaires pour le calendrier
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const monthNames = [
+    'Janvier',
+    'Février',
+    'Mars',
+    'Avril',
+    'Mai',
+    'Juin',
+    'Juillet',
+    'Août',
+    'Septembre',
+    'Octobre',
+    'Novembre',
+    'Décembre',
   ];
+  const dayLabels = ['DIM', 'LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM'];
 
-  const toggleMeal = (mealId: number) => {
-    setMeals(meals.map(meal => 
-      meal.id === mealId ? { ...meal, enabled: !meal.enabled } : meal
-    ));
+  // Générer les jours du calendrier
+  const generateCalendarDays = () => {
+    const daysInMonth = getDaysInMonth(currentMonth);
+    const firstDay = getFirstDayOfMonth(currentMonth);
+    const days = [];
+
+    // Jours vides avant le 1er du mois
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null);
+    }
+
+    // Jours du mois
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(i);
+    }
+
+    return days;
+  };
+
+  const isSelectedDate = (day: number | null) => {
+    if (!day) return false;
+    return (
+      selectedDate.getDate() === day &&
+      selectedDate.getMonth() === currentMonth.getMonth() &&
+      selectedDate.getFullYear() === currentMonth.getFullYear()
+    );
+  };
+
+  const selectDate = (day: number) => {
+    const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    setSelectedDate(newDate);
+  };
+
+  const goToPreviousMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+  };
+
+  const goToNextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setSelectedDate(today);
+    setCurrentMonth(today);
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadData();
+    }, []),
+  );
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      console.log("[Planning] Début du chargement des données pour l'utilisateur:", user?.id);
+
+      // Charger les repas de l'utilisateur courant
+      const mealsData = user?.id ? await mealsApi.getByUser(user.id) : await mealsApi.getAll();
+
+      const animalsData = user?.id
+        ? await animalsApi.getByUser(user.id)
+        : await animalsApi.getAll();
+
+      const distributorsData = user?.id
+        ? await distributorApi.getByUser(user.id)
+        : await distributorApi.getStatus();
+
+      const planningData = await planningApi.getAll();
+
+      console.log('[Planning] Repas chargés:', mealsData);
+      console.log('[Planning] Planning chargé:', planningData);
+      console.log('[Planning] Animaux chargés:', animalsData);
+      console.log('[Planning] Distributeurs chargés:', distributorsData);
+
+      setMeals(mealsData || []);
+      setAnimals(animalsData || []);
+      setDistributors(distributorsData || []);
+
+      // Charger les paramètres du planning
+      if (planningData) {
+        setApplyToAllDays(planningData.applyToAllDays !== false);
+        if (planningData.selectedDate) {
+          setSelectedDate(new Date(planningData.selectedDate));
+          setCurrentMonth(new Date(planningData.selectedDate));
+        }
+      }
+
+      console.log('[Planning] Chargement réussi');
+    } catch (error) {
+      console.error('[Planning] Erreur:', error);
+      Alert.alert('Erreur', 'Impossible de charger le planning');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  const getAnimalName = (distributorId: number) => {
+    const distributor = distributors.find((d) => d.id === distributorId);
+    if (!distributor) return 'Inconnu';
+    const animal = animals.find((a) => a.id === distributor.animalId);
+    return animal ? animal.name : 'Inconnu';
+  };
+
+  const toggleMeal = async (mealId: number) => {
+    const updatedMeals = meals.map((meal) =>
+      meal.id === mealId ? { ...meal, enabled: !meal.enabled } : meal,
+    );
+    setMeals(updatedMeals);
+
+    // Sauvegarder immédiatement le changement
+    try {
+      const mealToUpdate = updatedMeals.find((m) => m.id === mealId);
+      if (mealToUpdate) {
+        console.log('[Planning] Mise à jour du repas:', mealToUpdate);
+        await mealsApi.update(mealId, mealToUpdate);
+        console.log('[Planning] Repas mis à jour avec succès');
+      }
+    } catch (error) {
+      console.error('[Planning] Erreur lors de la mise à jour:', error);
+      Alert.alert('Erreur', 'Impossible de mettre à jour le repas');
+      // Revenir à l'état précédent
+      await loadData();
+    }
   };
 
   const savePlanning = async () => {
     try {
-      await planningApi.update({
-        applyToAllDays,
-        selectedDay,
-        meals: meals.filter(meal => meal.enabled),
-      });
+      console.log('[Planning] Début de la sauvegarde...');
 
+      const planningData = {
+        id: 1, // L'ID du planning (généralement 1 pour une single resource)
+        applyToAllDays,
+        selectedDate: selectedDate.toISOString(),
+        meals: meals.filter((meal) => meal.enabled).map((meal) => meal.id),
+      };
+
+      console.log('[Planning] Données à sauvegarder:', planningData);
+
+      // PUT /planning/1 pour mettre à jour la ressource
+      await planningApi.update(1, planningData);
+
+      console.log('[Planning] Sauvegarde réussie');
       Alert.alert('Succès', 'Planning sauvegardé avec succès');
     } catch (error: any) {
+      console.error('[Planning] Erreur sauvegarde:', error);
       Alert.alert('Erreur', error.message || 'Erreur lors de la sauvegarde');
     }
   };
@@ -57,80 +217,122 @@ export default function PlanningScreen() {
         <Text style={styles.headerTitle}>Planning</Text>
       </View>
 
-      <ScrollView style={styles.content}>
-        <View style={styles.optionContainer}>
-          <Text style={styles.optionText}>Appliquer ce planning à tous les jours</Text>
-          <Switch
-            value={applyToAllDays}
-            onValueChange={setApplyToAllDays}
-            trackColor={{ false: '#767577', true: '#81b0ff' }}
-            thumbColor={applyToAllDays ? '#007AFF' : '#f4f3f4'}
-          />
+      {loading ? (
+        <View style={[styles.content, styles.centerContent]}>
+          <ActivityIndicator size="large" color="#4ECDC4" />
         </View>
+      ) : (
+        <ScrollView
+          style={styles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+          <View style={styles.optionContainer}>
+            <Text style={styles.optionText}>Appliquer ce planning à tous les jours</Text>
+            <Switch
+              value={applyToAllDays}
+              onValueChange={setApplyToAllDays}
+              trackColor={{ false: '#767577', true: '#81b0ff' }}
+              thumbColor={applyToAllDays ? '#007AFF' : '#f4f3f4'}
+            />
+          </View>
 
-        <View style={styles.daysContainer}>
-          {days.map((day) => (
-            <TouchableOpacity
-              key={day.value}
-              style={[
-                styles.dayButton,
-                selectedDay === day.value && styles.selectedDayButton
-              ]}
-              onPress={() => setSelectedDay(day.value)}
-            >
-              <Text style={[
-                styles.dayText,
-                selectedDay === day.value && styles.selectedDayText
-              ]}>
-                {day.label}
+          {/* Calendrier */}
+          <View style={styles.calendarContainer}>
+            <View style={styles.calendarHeader}>
+              <TouchableOpacity onPress={goToPreviousMonth}>
+                <Text style={styles.calendarNav}>←</Text>
+              </TouchableOpacity>
+              <Text style={styles.calendarTitle}>
+                {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
               </Text>
-              <Text style={[
-                styles.dayNumber,
-                selectedDay === day.value && styles.selectedDayNumber
-              ]}>
-                {22 + day.value}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.mealsContainer}>
-          {meals.map((meal, index) => (
-            <View key={meal.id} style={styles.mealItem}>
-              <View style={styles.mealNumber}>
-                <Text style={styles.mealNumberText}>{index + 1}</Text>
-              </View>
-              <View style={styles.mealDetails}>
-                <Text style={styles.mealName}>{meal.name}</Text>
-                <Text style={styles.mealInfo}>{meal.time} • {meal.amount}</Text>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.mealToggle,
-                  meal.enabled && styles.mealToggleEnabled
-                ]}
-                onPress={() => toggleMeal(meal.id)}
-              >
-                <View style={[
-                  styles.mealToggleInner,
-                  meal.enabled && styles.mealToggleInnerEnabled
-                ]} />
+              <TouchableOpacity onPress={goToNextMonth}>
+                <Text style={styles.calendarNav}>→</Text>
               </TouchableOpacity>
             </View>
-          ))}
 
-          <TouchableOpacity 
-            style={styles.addMealButton}
-            onPress={() => router.push('/modals/add-meal')}
-          >
-            <Text style={styles.addMealText}>+ Ajouter un repas</Text>
+            {/* Jours de la semaine */}
+            <View style={styles.weekDaysContainer}>
+              {dayLabels.map((day) => (
+                <Text key={day} style={styles.weekDayLabel}>
+                  {day}
+                </Text>
+              ))}
+            </View>
+
+            {/* Jours du mois */}
+            <View style={styles.calendarGrid}>
+              {generateCalendarDays().map((day, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.calendarDay,
+                    day && isSelectedDate(day) ? styles.calendarDaySelected : null,
+                    !day ? styles.calendarDayEmpty : null,
+                  ]}
+                  onPress={() => day && selectDate(day)}
+                  disabled={!day}>
+                  <Text
+                    style={[
+                      styles.calendarDayText,
+                      day && isSelectedDate(day) ? styles.calendarDayTextSelected : null,
+                    ]}>
+                    {day}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Bouton "Aujourd'hui" */}
+            <TouchableOpacity style={styles.todayButton} onPress={goToToday}>
+              <Text style={styles.todayButtonText}>
+                📅 {selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Liste des repas */}
+          <View style={styles.mealsContainer}>
+            {meals.length > 0 ? (
+              <>
+                {meals.map((meal, index) => (
+                  <View key={meal.id} style={styles.mealItem}>
+                    <View style={styles.mealNumber}>
+                      <Text style={styles.mealNumberText}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.mealDetails}>
+                      <Text style={styles.mealName}>{meal.name}</Text>
+                      <Text style={styles.mealInfo}>
+                        {getAnimalName(meal.distributorId)} • {meal.time} • {meal.quantity}g
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.mealToggle, meal.enabled && styles.mealToggleEnabled]}
+                      onPress={() => toggleMeal(meal.id)}>
+                      <View
+                        style={[
+                          styles.mealToggleInner,
+                          meal.enabled && styles.mealToggleInnerEnabled,
+                        ]}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </>
+            ) : (
+              <Text style={styles.noMealsText}>Aucun repas configuré</Text>
+            )}
+
+            <TouchableOpacity
+              style={styles.addMealButton}
+              onPress={() => router.push('/modals/add-meal')}>
+              <Text style={styles.addMealText}>+ Ajouter un repas</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.saveButton} onPress={savePlanning}>
+            <Text style={styles.saveButtonText}>Enregistrer les modifications</Text>
           </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.saveButton} onPress={savePlanning}>
-          <Text style={styles.saveButtonText}>Enregistrer les modifications</Text>
-        </TouchableOpacity>
-      </ScrollView>
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -138,94 +340,146 @@ export default function PlanningScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
+    backgroundColor: COLORS.white,
+    paddingHorizontal: SPACING.xl,
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: COLORS.border,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text,
   },
   content: {
     flex: 1,
   },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   optionContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.lg,
     marginTop: 10,
   },
   optionText: {
     fontSize: 16,
-    color: '#333',
+    color: COLORS.text,
   },
-  daysContainer: {
-    backgroundColor: '#fff',
+  calendarContainer: {
+    backgroundColor: COLORS.white,
+    marginTop: 10,
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  calendarTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  calendarNav: {
+    fontSize: 24,
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
+  weekDaysContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 20,
-    marginTop: 10,
+    marginBottom: 8,
   },
-  dayButton: {
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-  },
-  selectedDayButton: {
-    backgroundColor: '#4ECDC4',
-  },
-  dayText: {
+  weekDayLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
+    color: COLORS.textSecondary,
+    width: '14.28%',
+    textAlign: 'center',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 12,
+  },
+  calendarDay: {
+    width: '14.28%',
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: BORDER_RADIUS.small,
     marginBottom: 4,
   },
-  selectedDayText: {
-    color: '#fff',
+  calendarDayEmpty: {
+    opacity: 0,
   },
-  dayNumber: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+  calendarDaySelected: {
+    backgroundColor: COLORS.primary,
   },
-  selectedDayNumber: {
-    color: '#fff',
+  calendarDayText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  calendarDayTextSelected: {
+    color: COLORS.white,
+  },
+  todayButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.lg,
+    borderRadius: BORDER_RADIUS.medium,
+    alignItems: 'center',
+    ...SHADOWS.primary,
+  },
+  todayButtonText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: '600',
   },
   mealsContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     marginTop: 10,
-    paddingVertical: 20,
+    paddingVertical: SPACING.lg,
   },
   mealItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.white,
+    marginBottom: 4,
+    marginHorizontal: SPACING.sm,
+    borderRadius: BORDER_RADIUS.medium,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
+    ...SHADOWS.small,
   },
   mealNumber: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#4ECDC4',
+    borderRadius: BORDER_RADIUS.round,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: SPACING.lg,
+    ...SHADOWS.small,
   },
   mealNumberText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -235,59 +489,66 @@ const styles = StyleSheet.create({
   mealName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: COLORS.text,
     marginBottom: 4,
   },
   mealInfo: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   mealToggle: {
     width: 50,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#ddd',
+    backgroundColor: COLORS.border,
     justifyContent: 'center',
     paddingHorizontal: 3,
   },
   mealToggleEnabled: {
-    backgroundColor: '#4ECDC4',
+    backgroundColor: COLORS.primary,
   },
   mealToggleInner: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
   },
   mealToggleInnerEnabled: {
     alignSelf: 'flex-end',
   },
+  noMealsText: {
+    textAlign: 'center',
+    color: COLORS.textTertiary,
+    paddingVertical: SPACING.xl,
+    fontSize: 14,
+  },
   addMealButton: {
-    marginHorizontal: 20,
-    marginTop: 16,
-    paddingVertical: 16,
+    marginHorizontal: SPACING.xl,
+    marginTop: SPACING.lg,
+    paddingVertical: SPACING.lg,
     borderWidth: 2,
-    borderColor: '#4ECDC4',
+    borderColor: COLORS.primary,
     borderStyle: 'dashed',
-    borderRadius: 12,
+    borderRadius: BORDER_RADIUS.medium,
     alignItems: 'center',
   },
   addMealText: {
     fontSize: 16,
-    color: '#4ECDC4',
+    color: COLORS.primary,
     fontWeight: '600',
   },
   saveButton: {
-    backgroundColor: '#FF6B35',
-    marginHorizontal: 20,
-    marginTop: 20,
+    backgroundColor: COLORS.primary,
+    marginHorizontal: SPACING.xl,
+    marginTop: SPACING.lg,
     marginBottom: 30,
-    paddingVertical: 16,
-    borderRadius: 25,
+    paddingVertical: SPACING.lg,
+    borderRadius: BORDER_RADIUS.round,
     alignItems: 'center',
+    ...SHADOWS.primary,
   },
   saveButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },

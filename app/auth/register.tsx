@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authApi } from '@/utils/BaseAPI';
@@ -43,7 +43,7 @@ export default function RegisterScreen() {
       const response = await authApi.register(name, email, password);
 
       Alert.alert('Succès', 'Compte créé avec succès', [
-        { text: 'OK', onPress: () => router.replace('/auth/login') }
+        { text: 'OK', onPress: () => router.replace('/auth/login') },
       ]);
     } catch (error: any) {
       Alert.alert('Erreur', error.message || 'Erreur lors de la création du compte');
@@ -53,10 +53,9 @@ export default function RegisterScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
@@ -66,11 +65,11 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.logoContainer}>
-          <Image 
-                    source={require('@/assets/images/logo.png')} 
-                    style={styles.logoImage}
-                    resizeMode="contain"
-                  />
+          <Image
+            source={require('@/assets/images/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
 
         <View style={styles.form}>
@@ -106,11 +105,10 @@ export default function RegisterScreen() {
             secureTextEntry
           />
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.registerButton, loading && styles.registerButtonDisabled]}
             onPress={handleRegister}
-            disabled={loading}
-          >
+            disabled={loading}>
             <Text style={styles.registerButtonText}>
               {loading ? 'Création...' : 'Créer mon compte'}
             </Text>

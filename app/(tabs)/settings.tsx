@@ -1,129 +1,66 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Alert,
-  Switch
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { BORDER_RADIUS, COLORS, SHADOWS, SPACING } from '@/constants/ThemeColors';
 import { useAuth } from '@/hooks/useAuth';
 import { distributorApi } from '@/utils/BaseAPI';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState(true);
-  const [autoFeeding, setAutoFeeding] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const [distributorCount, setDistributorCount] = useState(0);
-  const [loading, setLoading] = useState(false);
   const { user, logout } = useAuth();
+
+  const loadSettings = React.useCallback(async () => {
+    try {
+      console.log('[Settings] Chargement des paramètres pour utilisateur:', user?.id);
+      // Charger le nombre de mangeoires de l'utilisateur
+      const distributors = user?.id
+        ? await distributorApi.getByUser(user.id)
+        : await distributorApi.getStatus();
+      console.log('[Settings] Distributeurs chargés:', distributors);
+      setDistributorCount(distributors.length);
+      console.log('[Settings] Nombre de distributeurs:', distributors.length);
+    } catch (error) {
+      console.error('[Settings] Erreur lors du chargement:', error);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
-    try {
-      // Charger le nombre de mangeoires
-      const distributors = await distributorApi.getStatus();
-      setDistributorCount(distributors.length);
-    } catch (error) {
-      console.error('Erreur lors du chargement des paramètres:', error);
-    }
-  };
+  }, [loadSettings]);
 
   const handleContactSupport = () => {
     Alert.alert(
       'Contacter le support',
-      'Comment souhaitez-vous nous contacter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Email', onPress: () => Alert.alert('Support', 'Redirection vers mail@smart-pet-feeder.com...') },
-        { text: 'Chat', onPress: () => Alert.alert('Support', 'Ouverture du chat en direct...') },
-        { text: 'Téléphone', onPress: () => Alert.alert('Support', 'Appel vers +33 1 23 45 67 89...') },
-      ]
+      'Pour toute question, veuillez nous envoyer un email à support@smart-pet-feeder.com',
+      [{ text: 'Fermer', style: 'default' }],
     );
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Déconnexion', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              router.replace('/auth/login');
-            } catch (error) {
-              console.error('Erreur lors de la déconnexion:', error);
-              Alert.alert('Erreur', 'Impossible de se déconnecter. Veuillez réessayer.');
-            }
+    Alert.alert('Déconnexion', 'Êtes-vous sûr de vouloir vous déconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Déconnexion',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await logout();
+            router.replace('/auth/login');
+          } catch (error) {
+            console.error('Erreur lors de la déconnexion:', error);
+            Alert.alert('Erreur', 'Impossible de se déconnecter. Veuillez réessayer.');
           }
-        }
-      ]
-    );
-  };
-
-  const handleResetApp = () => {
-    Alert.alert(
-      'Réinitialiser l\'application',
-      'Cette action supprimera toutes vos données locales. Êtes-vous sûr ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Réinitialiser', 
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Réinitialisation', 'Application réinitialisée avec succès');
-          }
-        }
-      ]
-    );
-  };
-
-  const handleExportData = () => {
-    Alert.alert(
-      'Export des données',
-      'Vos données vont être préparées pour l\'export. Vous recevrez un email avec le fichier.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Exporter', 
-          onPress: () => {
-            Alert.alert('Export', 'Export en cours... Vous recevrez un email sous peu.');
-          }
-        }
-      ]
-    );
-  };
-
-  const toggleNotification = (value) => {
-    setNotifications(value);
-    if (!value) {
-      Alert.alert(
-        'Notifications désactivées',
-        'Vous ne recevrez plus d\'alertes pour les repas et les niveaux de nourriture.'
-      );
-    }
+        },
+      },
+    ]);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Réglages</Text>
-        <TouchableOpacity style={styles.notificationButton}>
-          <Ionicons name="notifications" size={24} color="#333" />
-          {notifications && <View style={styles.notificationBadge} />}
-        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content}>
@@ -139,7 +76,9 @@ export default function SettingsScreen() {
               <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
               <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
             </View>
-            <TouchableOpacity style={styles.editButton}>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => router.push('/user-profile')}>
               <Ionicons name="pencil" size={16} color="#007AFF" />
             </TouchableOpacity>
           </View>
@@ -155,34 +94,50 @@ export default function SettingsScreen() {
             <View style={styles.deviceDetails}>
               <Text style={styles.deviceName}>Smart Pet Feeder</Text>
               <Text style={styles.deviceStatus}>
-                {distributorCount} mangeoire{distributorCount > 1 ? 's' : ''} connectée{distributorCount > 1 ? 's' : ''} • Firmware v2.4.1
+                {distributorCount} mangeoire{distributorCount > 1 ? 's' : ''} connectée
+                {distributorCount > 1 ? 's' : ''}
               </Text>
             </View>
-            <TouchableOpacity 
-              style={styles.detailsButton}
-              onPress={() => router.push('/distributor-management')}
-            >
-              <Text style={styles.detailsButtonText}>Gérer</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
         {/* Paramètres généraux */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Paramètres généraux</Text>
-          
-          <TouchableOpacity style={styles.settingItem}>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => router.push('/animal-management')}>
             <View style={styles.settingIcon}>
               <Ionicons name="paw" size={20} color="#666" />
             </View>
-            <Text style={styles.settingText}>Profil des animaux</Text>
+            <Text style={styles.settingText}>Gestion des animaux</Text>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.settingItem}
-            onPress={() => router.push('/distributor-management')}
-          >
+            onPress={() => router.push('/animal-types-management')}>
+            <View style={styles.settingIcon}>
+              <Ionicons name="list" size={20} color="#666" />
+            </View>
+            <Text style={styles.settingText}>Gestion des types d'animaux</Text>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => router.push('/animal-breeds-management')}>
+            <View style={styles.settingIcon}>
+              <Ionicons name="filter" size={20} color="#666" />
+            </View>
+            <Text style={styles.settingText}>Gestion des races</Text>
+            <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => router.push('/distributor-management')}>
             <View style={styles.settingIcon}>
               <Ionicons name="hardware-chip" size={20} color="#666" />
             </View>
@@ -190,122 +145,13 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.settingItem}
-            onPress={() => router.push('/distributor-settings')}
-          >
-            <View style={styles.settingIcon}>
-              <Ionicons name="options" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Paramètres des mangeoires</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingIcon}>
-              <Ionicons name="notifications" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Notifications</Text>
-            <Switch
-              value={notifications}
-              onValueChange={toggleNotification}
-              trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={notifications ? '#007AFF' : '#f4f3f4'}
-            />
-          </View>
-
-          <View style={styles.settingItem}>
+            onPress={() => router.push('/meals-management')}>
             <View style={styles.settingIcon}>
               <Ionicons name="restaurant" size={20} color="#666" />
             </View>
-            <Text style={styles.settingText}>Alimentation automatique</Text>
-            <Switch
-              value={autoFeeding}
-              onValueChange={setAutoFeeding}
-              trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={autoFeeding ? '#007AFF' : '#f4f3f4'}
-            />
-          </View>
-
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingIcon}>
-              <Ionicons name="scale" size={20} color="#666" />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={styles.settingText}>Unités de mesure</Text>
-              <Text style={styles.settingValue}>Grammes</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingIcon}>
-              <Ionicons name="wifi" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Connectivité Wi-Fi</Text>
-            <View style={styles.wifiStatus}>
-              <View style={styles.wifiIndicator} />
-              <Text style={styles.wifiText}>Connecté</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Paramètres avancés */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Paramètres avancés</Text>
-          
-          <View style={styles.settingItem}>
-            <View style={styles.settingIcon}>
-              <Ionicons name="volume-high" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Sons de distribution</Text>
-            <Switch
-              value={soundEnabled}
-              onValueChange={setSoundEnabled}
-              trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={soundEnabled ? '#007AFF' : '#f4f3f4'}
-            />
-          </View>
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingIcon}>
-              <Ionicons name="moon" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Mode sombre</Text>
-            <Switch
-              value={darkMode}
-              onValueChange={setDarkMode}
-              trackColor={{ false: '#767577', true: '#81b0ff' }}
-              thumbColor={darkMode ? '#007AFF' : '#f4f3f4'}
-            />
-          </View>
-
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingIcon}>
-              <Ionicons name="settings" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Calibrage du distributeur</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingIcon}>
-              <Ionicons name="refresh" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Mise à jour du firmware</Text>
-            <View style={styles.updateBadge}>
-              <Text style={styles.updateText}>À jour</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.settingItem}
-            onPress={handleExportData}
-          >
-            <View style={styles.settingIcon}>
-              <Ionicons name="archive" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Gestion des données</Text>
+            <Text style={styles.settingText}>Gestion des repas</Text>
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
         </View>
@@ -313,8 +159,8 @@ export default function SettingsScreen() {
         {/* Section Compte */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Compte</Text>
-          
-          <TouchableOpacity style={styles.settingItem}>
+
+          <TouchableOpacity style={styles.settingItem} onPress={() => router.push('/user-profile')}>
             <View style={styles.settingIcon}>
               <Ionicons name="person" size={20} color="#666" />
             </View>
@@ -322,7 +168,9 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem}>
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => router.push('/change-password')}>
             <View style={styles.settingIcon}>
               <Ionicons name="lock-closed" size={20} color="#666" />
             </View>
@@ -330,89 +178,12 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={20} color="#ccc" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingIcon}>
-              <Ionicons name="shield-checkmark" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Confidentialité</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.settingItem}
-            onPress={handleExportData}
-          >
-            <View style={styles.settingIcon}>
-              <Ionicons name="download" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Exporter mes données</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-
           {/* Bouton de déconnexion */}
-          <TouchableOpacity 
-            style={[styles.settingItem, styles.logoutItem]} 
-            onPress={handleLogout}
-          >
+          <TouchableOpacity style={[styles.settingItem, styles.logoutItem]} onPress={handleLogout}>
             <View style={[styles.settingIcon, styles.logoutIcon]}>
               <Ionicons name="log-out" size={20} color="#FF3B30" />
             </View>
             <Text style={[styles.settingText, styles.logoutText]}>Déconnexion</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Section Aide */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Aide et support</Text>
-          
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingIcon}>
-              <Ionicons name="book" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Guide d'utilisation</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingIcon}>
-              <Ionicons name="chatbubble" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>FAQ</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.settingItem}
-            onPress={handleContactSupport}
-          >
-            <View style={styles.settingIcon}>
-              <Ionicons name="mail" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Contacter le support</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingIcon}>
-              <Ionicons name="star" size={20} color="#666" />
-            </View>
-            <Text style={styles.settingText}>Évaluer l'application</Text>
-            <Ionicons name="chevron-forward" size={20} color="#ccc" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Section Danger */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Zone de danger</Text>
-          
-          <TouchableOpacity 
-            style={[styles.settingItem, styles.dangerItem]}
-            onPress={handleResetApp}
-          >
-            <View style={[styles.settingIcon, styles.dangerIcon]}>
-              <Ionicons name="refresh" size={20} color="#FF3B30" />
-            </View>
-            <Text style={[styles.settingText, styles.dangerText]}>Réinitialiser l'application</Text>
           </TouchableOpacity>
         </View>
 
@@ -426,13 +197,7 @@ export default function SettingsScreen() {
         <View style={styles.appInfo}>
           <Text style={styles.appName}>Smart Pet Feeder</Text>
           <Text style={styles.versionText}>Version 1.0.0 (Build 2024.1)</Text>
-          <Text style={styles.copyrightText}>© 2024 Smart Pet Solutions</Text>
-          <TouchableOpacity style={styles.linkButton}>
-            <Text style={styles.linkText}>Conditions d'utilisation</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.linkButton}>
-            <Text style={styles.linkText}>Politique de confidentialité</Text>
-          </TouchableOpacity>
+          <Text style={styles.copyrightText}>© 2025 Smart Pet Solutions</Text>
         </View>
       </ScrollView>
     </View>
@@ -442,27 +207,27 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl,
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: SPACING.xl,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: COLORS.border,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text,
   },
   notificationButton: {
     position: 'relative',
-    padding: 10,
+    padding: SPACING.sm,
   },
   notificationBadge: {
     position: 'absolute',
@@ -470,43 +235,44 @@ const styles = StyleSheet.create({
     right: 8,
     width: 12,
     height: 12,
-    backgroundColor: '#FF3B30',
+    backgroundColor: COLORS.danger,
     borderRadius: 6,
   },
   content: {
     flex: 1,
   },
   section: {
-    backgroundColor: '#fff',
-    marginTop: 10,
-    paddingVertical: 16,
+    backgroundColor: COLORS.white,
+    marginTop: SPACING.md,
+    paddingVertical: SPACING.lg,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    color: COLORS.text,
+    paddingHorizontal: SPACING.xl,
+    marginBottom: SPACING.lg,
   },
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.sm,
   },
   userAvatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#007AFF',
+    backgroundColor: COLORS.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: SPACING.lg,
+    ...SHADOWS.medium,
   },
   userAvatarText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: COLORS.white,
   },
   userDetails: {
     flex: 1,
@@ -514,29 +280,30 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
   },
   userEmail: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   editButton: {
-    padding: 8,
+    padding: SPACING.sm,
   },
   deviceInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl,
   },
   deviceIcon: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#4ECDC4',
+    backgroundColor: COLORS.secondary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: SPACING.lg,
+    ...SHADOWS.small,
   },
   deviceIconText: {
     fontSize: 24,
@@ -547,53 +314,53 @@ const styles = StyleSheet.create({
   deviceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
   },
   deviceStatus: {
     fontSize: 12,
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   detailsButton: {
-    backgroundColor: '#4ECDC4',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.medium,
   },
   detailsButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 12,
     fontWeight: '600',
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: COLORS.border,
   },
   settingIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: COLORS.border,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: SPACING.lg,
   },
   settingText: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: COLORS.text,
   },
   settingContent: {
     flex: 1,
   },
   settingValue: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 2,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.sm,
   },
   wifiStatus: {
     flexDirection: 'row',
@@ -603,92 +370,93 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#4CD964',
-    marginRight: 6,
+    backgroundColor: COLORS.success,
+    marginRight: SPACING.sm,
   },
   wifiText: {
     fontSize: 14,
-    color: '#4CD964',
+    color: COLORS.success,
   },
   updateBadge: {
-    backgroundColor: '#4CD964',
-    paddingHorizontal: 8,
+    backgroundColor: COLORS.success,
+    paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: BORDER_RADIUS.small,
   },
   updateText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 12,
     fontWeight: '500',
   },
   logoutItem: {
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    marginTop: 8,
+    borderTopColor: COLORS.border,
+    marginTop: SPACING.md,
   },
   logoutIcon: {
     backgroundColor: '#ffebee',
   },
   logoutText: {
-    color: '#FF3B30',
+    color: COLORS.danger,
     fontWeight: '500',
   },
   dangerItem: {
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: COLORS.border,
   },
   dangerIcon: {
     backgroundColor: '#ffebee',
   },
   dangerText: {
-    color: '#FF3B30',
+    color: COLORS.danger,
     fontWeight: '500',
   },
   supportButton: {
-    backgroundColor: '#4ECDC4',
+    backgroundColor: COLORS.secondary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 20,
-    marginTop: 20,
-    paddingVertical: 16,
-    borderRadius: 25,
+    marginHorizontal: SPACING.xl,
+    marginTop: SPACING.xl,
+    paddingVertical: SPACING.lg,
+    borderRadius: BORDER_RADIUS.round,
+    ...SHADOWS.small,
   },
   supportIcon: {
-    marginRight: 8,
+    marginRight: SPACING.md,
   },
   supportButtonText: {
-    color: '#fff',
+    color: COLORS.white,
     fontSize: 16,
     fontWeight: '600',
   },
   appInfo: {
     alignItems: 'center',
     paddingVertical: 30,
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl,
   },
   appName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
   },
   versionText: {
     fontSize: 12,
-    color: '#999',
-    marginBottom: 2,
+    color: COLORS.textTertiary,
+    marginBottom: SPACING.sm,
   },
   copyrightText: {
     fontSize: 12,
-    color: '#999',
-    marginBottom: 16,
+    color: COLORS.textTertiary,
+    marginBottom: SPACING.lg,
   },
   linkButton: {
-    marginVertical: 4,
+    marginVertical: SPACING.sm,
   },
   linkText: {
     fontSize: 14,
-    color: '#007AFF',
+    color: COLORS.accent,
     textDecorationLine: 'underline',
   },
 });

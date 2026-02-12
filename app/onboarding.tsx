@@ -31,29 +31,26 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Smart Pet Feeder</Text>
       <Text style={styles.subtitle}>Nourrissez intelligemment</Text>
-      
+
       <View style={styles.logoContainer}>
-        <Image 
-                  source={require('@/assets/images/logo.png')} 
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
+        <Image
+          source={require('@/assets/images/logo.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
       </View>
-      
+
       <Text style={styles.mainText}>{pages[currentPage].title}</Text>
-      
+
       <View style={styles.pagination}>
         {pages.map((_, index) => (
-          <View 
+          <View
             key={index}
-            style={[
-              styles.dot,
-              index === currentPage ? styles.activeDot : styles.inactiveDot
-            ]}
+            style={[styles.dot, index === currentPage ? styles.activeDot : styles.inactiveDot]}
           />
         ))}
       </View>
-      
+
       <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
         <Text style={styles.nextButtonText}>
           {currentPage === pages.length - 1 ? 'Commencez maintenant !' : 'Suivant'}

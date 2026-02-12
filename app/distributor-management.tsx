@@ -1,55 +1,52 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
+import { BORDER_RADIUS, COLORS, SHADOWS, SPACING } from '@/constants/ThemeColors';
+import { useAuth } from '@/hooks/useAuth';
+import { Animal, Distributor } from '@/types';
+import { animalsApi, distributorApi } from '@/utils/BaseAPI';
+import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import {
   Alert,
   Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
   TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { distributorApi } from '@/utils/BaseAPI';
-
-interface Distributor {
-  id: number;
-  name: string;
-  animalType: string;
-  currentLevel: number;
-  maxCapacity: number;
-  autonomyDays: number;
-  lastRefill: string;
-  connected: boolean;
-  firmwareVersion: string;
-  location?: string;
-}
 
 export default function DistributorManagementScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [distributors, setDistributors] = useState<Distributor[]>([]);
+  const [animals, setAnimals] = useState<Animal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingDistributor, setEditingDistributor] = useState<Distributor | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    animalType: 'Chien',
-    maxCapacity: 2000,
+    animalId: null as number | null,
+    maxCapacity: '2000',
     location: '',
   });
 
   useEffect(() => {
-    loadDistributors();
+    loadData();
   }, []);
 
-  const loadDistributors = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await distributorApi.getStatus();
-      setDistributors(data);
+      const [distributorsData, animalsData] = await Promise.all([
+        user?.id ? await distributorApi.getByUser(user.id) : await distributorApi.getStatus(),
+        user?.id ? await animalsApi.getByUser(user.id) : await animalsApi.getAll(),
+      ]);
+      setDistributors(distributorsData);
+      setAnimals(animalsData || []);
     } catch (error: any) {
-      Alert.alert('Erreur', 'Impossible de charger les mangeoires');
+      Alert.alert('Erreur', 'Impossible de charger les données');
       console.error(error);
     } finally {
       setLoading(false);
@@ -62,9 +59,18 @@ export default function DistributorManagementScreen() {
       return;
     }
 
+    if (!formData.animalId) {
+      Alert.alert('Erreur', 'Veuillez sélectionner un animal');
+      return;
+    }
+
     try {
       const newDistributor = {
-        ...formData,
+        userId: user?.id,
+        animalId: formData.animalId,
+        name: formData.name.trim(),
+        maxCapacity: parseInt(formData.maxCapacity) || 2000,
+        location: formData.location.trim(),
         currentLevel: 100,
         autonomyDays: 15,
         lastRefill: new Date().toISOString(),
@@ -75,26 +81,32 @@ export default function DistributorManagementScreen() {
       await distributorApi.create(newDistributor);
       setShowAddModal(false);
       resetForm();
-      loadDistributors();
+      loadData();
       Alert.alert('Succès', 'Mangeoire ajoutée avec succès');
     } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Erreur lors de l\'ajout');
+      Alert.alert('Erreur', error.message || "Erreur lors de l'ajout");
     }
   };
 
   const handleEditDistributor = async () => {
-    if (!editingDistributor || !formData.name.trim()) return;
+    if (!editingDistributor || !formData.name.trim() || !formData.animalId) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs requis');
+      return;
+    }
 
     try {
       const updatedDistributor = {
         ...editingDistributor,
-        ...formData,
+        name: formData.name.trim(),
+        animalId: formData.animalId,
+        maxCapacity: parseInt(formData.maxCapacity) || editingDistributor.maxCapacity,
+        location: formData.location.trim(),
       };
 
       await distributorApi.update(editingDistributor.id, updatedDistributor);
       setEditingDistributor(null);
       resetForm();
-      loadDistributors();
+      loadData();
       Alert.alert('Succès', 'Mangeoire mise à jour avec succès');
     } catch (error: any) {
       Alert.alert('Erreur', error.message || 'Erreur lors de la mise à jour');
@@ -118,9 +130,9 @@ export default function DistributorManagementScreen() {
             } catch (error: any) {
               Alert.alert('Erreur', error.message || 'Erreur lors de la suppression');
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -147,26 +159,26 @@ export default function DistributorManagementScreen() {
                 ...distributor,
                 currentLevel: 100,
                 lastRefill: new Date().toISOString(),
-                autonomyDays: Math.ceil(distributor.maxCapacity / 100), // Estimation
+                autonomyDays: Math.ceil(distributor.maxCapacity / 100),
               };
-              
+
               await distributorApi.update(distributor.id, updatedDistributor);
-              loadDistributors();
+              loadData();
               Alert.alert('Succès', 'Niveau mis à jour avec succès');
             } catch (error: any) {
               Alert.alert('Erreur', error.message || 'Erreur lors de la mise à jour');
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
   const resetForm = () => {
     setFormData({
       name: '',
-      animalType: 'Chien',
-      maxCapacity: 2000,
+      animalId: null,
+      maxCapacity: '2000',
       location: '',
     });
   };
@@ -175,8 +187,8 @@ export default function DistributorManagementScreen() {
     setEditingDistributor(distributor);
     setFormData({
       name: distributor.name,
-      animalType: distributor.animalType,
-      maxCapacity: distributor.maxCapacity,
+      animalId: distributor.animalId,
+      maxCapacity: distributor.maxCapacity.toString(),
       location: distributor.location || '',
     });
     setShowAddModal(true);
@@ -204,99 +216,95 @@ export default function DistributorManagementScreen() {
           <Text style={styles.backButton}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Gestion des mangeoires</Text>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={() => setShowAddModal(true)}
-        >
+        <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
           <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content}>
-        {distributors.map((distributor) => (
-          <View key={distributor.id} style={styles.distributorCard}>
-            <View style={styles.distributorHeader}>
-              <View style={styles.distributorInfo}>
-                <Text style={styles.distributorName}>{distributor.name}</Text>
-                <Text style={styles.distributorType}>{distributor.animalType}</Text>
-              </View>
-              
-              <View style={styles.connectionStatus}>
-                <View style={[
-                  styles.connectionDot,
-                  { backgroundColor: distributor.connected ? '#4CD964' : '#FF3B30' }
-                ]} />
-                <Text style={styles.connectionText}>
-                  {distributor.connected ? 'Connecté' : 'Déconnecté'}
-                </Text>
-              </View>
-            </View>
+        {distributors.map((distributor) => {
+          const animal = animals.find((a) => a.id === distributor.animalId);
+          return (
+            <View key={distributor.id} style={styles.distributorCard}>
+              <View style={styles.distributorHeader}>
+                <View style={styles.distributorInfo}>
+                  <Text style={styles.distributorName}>{distributor.name}</Text>
+                  <Text style={styles.distributorType}>{animal?.name || 'Animal inconnu'}</Text>
+                </View>
 
-            <View style={styles.distributorStats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Niveau</Text>
-                <Text style={[
-                  styles.statValue,
-                  { color: distributor.currentLevel < 30 ? '#FF3B30' : '#4CD964' }
-                ]}>
-                  {distributor.currentLevel}%
-                </Text>
+                <View style={styles.connectionStatus}>
+                  <View
+                    style={[
+                      styles.connectionDot,
+                      { backgroundColor: distributor.connected ? '#4CD964' : '#FF3B30' },
+                    ]}
+                  />
+                  <Text style={styles.connectionText}>
+                    {distributor.connected ? 'Connecté' : 'Déconnecté'}
+                  </Text>
+                </View>
               </View>
-              
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Autonomie</Text>
-                <Text style={styles.statValue}>{distributor.autonomyDays}j</Text>
-              </View>
-              
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Capacité</Text>
-                <Text style={styles.statValue}>{distributor.maxCapacity}g</Text>
-              </View>
-            </View>
 
-            <View style={styles.distributorActions}>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => handleRefillDistributor(distributor)}
-              >
-                <Ionicons name="water" size={16} color="#007AFF" />
-                <Text style={styles.actionText}>Remplir</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => handleCalibrateDistributor(distributor)}
-              >
-                <Ionicons name="settings" size={16} color="#007AFF" />
-                <Text style={styles.actionText}>Calibrer</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => openEditModal(distributor)}
-              >
-                <Ionicons name="pencil" size={16} color="#007AFF" />
-                <Text style={styles.actionText}>Modifier</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.deleteButton]}
-                onPress={() => handleDeleteDistributor(distributor)}
-              >
-                <Ionicons name="trash" size={16} color="#FF3B30" />
-                <Text style={[styles.actionText, styles.deleteText]}>Supprimer</Text>
-              </TouchableOpacity>
+              <View style={styles.distributorStats}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Niveau</Text>
+                  <Text
+                    style={[
+                      styles.statValue,
+                      { color: distributor.currentLevel < 30 ? '#FF3B30' : '#4CD964' },
+                    ]}>
+                    {distributor.currentLevel}%
+                  </Text>
+                </View>
+
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Autonomie</Text>
+                  <Text style={styles.statValue}>{distributor.autonomyDays}j</Text>
+                </View>
+
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Capacité</Text>
+                  <Text style={styles.statValue}>{distributor.maxCapacity}g</Text>
+                </View>
+              </View>
+
+              <View style={styles.distributorActions}>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => handleRefillDistributor(distributor)}>
+                  <Ionicons name="water" size={16} color="#007AFF" />
+                  <Text style={styles.actionText}>Remplir</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => handleCalibrateDistributor(distributor)}>
+                  <Ionicons name="settings" size={16} color="#007AFF" />
+                  <Text style={styles.actionText}>Calibrer</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => openEditModal(distributor)}>
+                  <Ionicons name="pencil" size={16} color="#007AFF" />
+                  <Text style={styles.actionText}>Modifier</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.deleteButton]}
+                  onPress={() => handleDeleteDistributor(distributor)}>
+                  <Ionicons name="trash" size={16} color="#FF3B30" />
+                  <Text style={[styles.actionText, styles.deleteText]}>Supprimer</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
 
         {distributors.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>Aucune mangeoire configurée</Text>
-            <TouchableOpacity 
-              style={styles.emptyButton}
-              onPress={() => setShowAddModal(true)}
-            >
+            <TouchableOpacity style={styles.emptyButton} onPress={() => setShowAddModal(true)}>
               <Text style={styles.emptyButtonText}>Ajouter une mangeoire</Text>
             </TouchableOpacity>
           </View>
@@ -304,11 +312,7 @@ export default function DistributorManagementScreen() {
       </ScrollView>
 
       {/* Modal d'ajout/modification */}
-      <Modal
-        visible={showAddModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
+      <Modal visible={showAddModal} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={closeModal}>
@@ -317,12 +321,9 @@ export default function DistributorManagementScreen() {
             <Text style={styles.modalTitle}>
               {editingDistributor ? 'Modifier la mangeoire' : 'Ajouter une mangeoire'}
             </Text>
-            <TouchableOpacity 
-              onPress={editingDistributor ? handleEditDistributor : handleAddDistributor}
-            >
-              <Text style={styles.modalSave}>
-                {editingDistributor ? 'Modifier' : 'Ajouter'}
-              </Text>
+            <TouchableOpacity
+              onPress={editingDistributor ? handleEditDistributor : handleAddDistributor}>
+              <Text style={styles.modalSave}>{editingDistributor ? 'Modifier' : 'Ajouter'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -338,25 +339,17 @@ export default function DistributorManagementScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Type d'animal</Text>
-              <View style={styles.animalTypeButtons}>
-                {['Chien', 'Chat', 'Lapin', 'Autre'].map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.animalTypeButton,
-                      formData.animalType === type && styles.selectedAnimalType
-                    ]}
-                    onPress={() => setFormData({ ...formData, animalType: type })}
-                  >
-                    <Text style={[
-                      styles.animalTypeText,
-                      formData.animalType === type && styles.selectedAnimalTypeText
-                    ]}>
-                      {type}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <Text style={styles.inputLabel}>Animal</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={formData.animalId}
+                  style={styles.picker}
+                  onValueChange={(animalId) => setFormData({ ...formData, animalId })}>
+                  <Picker.Item label="Sélectionner un animal" value={null} />
+                  {animals.map((animal) => (
+                    <Picker.Item key={animal.id} label={animal.name} value={animal.id} />
+                  ))}
+                </Picker>
               </View>
             </View>
 
@@ -365,7 +358,9 @@ export default function DistributorManagementScreen() {
               <TextInput
                 style={styles.textInput}
                 value={formData.maxCapacity.toString()}
-                onChangeText={(text) => setFormData({ ...formData, maxCapacity: parseInt(text) || 0 })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, maxCapacity: parseInt(text) || 0 })
+                }
                 placeholder="2000"
                 keyboardType="numeric"
               />
@@ -390,58 +385,55 @@ export default function DistributorManagementScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.background,
   },
   centered: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.xl,
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: SPACING.xl,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: COLORS.border,
   },
   backButton: {
     fontSize: 24,
-    color: '#007AFF',
+    color: COLORS.accent,
     marginRight: 10,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: COLORS.text,
     flex: 1,
     textAlign: 'center',
-    marginRight: 44, // Compensation pour l'équilibrage avec le bouton add
+    marginRight: 44,
   },
   addButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: COLORS.accent,
     width: 44,
     height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    ...SHADOWS.medium,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: SPACING.xl,
   },
   distributorCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.medium,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    ...SHADOWS.medium,
   },
   distributorHeader: {
     flexDirection: 'row',
@@ -620,5 +612,15 @@ const styles = StyleSheet.create({
   },
   selectedAnimalTypeText: {
     color: '#fff',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
   },
 });

@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
-  Alert 
-} from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authApi } from '@/utils/BaseAPI';
 
@@ -26,12 +19,12 @@ export default function ForgotPasswordScreen() {
       await authApi.forgotPassword(email);
 
       Alert.alert(
-        'Email envoyé', 
+        'Email envoyé',
         'Un lien de réinitialisation a été envoyé à votre adresse email',
-        [{ text: 'OK', onPress: () => router.back() }]
+        [{ text: 'OK', onPress: () => router.back() }],
       );
     } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Erreur lors de l\'envoi de l\'email');
+      Alert.alert('Erreur', error.message || "Erreur lors de l'envoi de l'email");
     } finally {
       setLoading(false);
     }
@@ -61,14 +54,11 @@ export default function ForgotPasswordScreen() {
           autoCapitalize="none"
         />
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.sendButton, loading && styles.sendButtonDisabled]}
           onPress={handleResetPassword}
-          disabled={loading}
-        >
-          <Text style={styles.sendButtonText}>
-            {loading ? 'Envoi...' : 'Envoyer'}
-          </Text>
+          disabled={loading}>
+          <Text style={styles.sendButtonText}>{loading ? 'Envoi...' : 'Envoyer'}</Text>
         </TouchableOpacity>
       </View>
     </View>

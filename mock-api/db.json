@@ -15,6 +15,70 @@
       "createdAt": "2025-09-11T13:59:32.434Z"
     }
   ],
+  "animalTypes": [
+    {
+      "id": 1,
+      "label": "Chien",
+      "icon": "🐕",
+      "description": "Chien domestique"
+    },
+    {
+      "id": 2,
+      "label": "Chat",
+      "icon": "🐱",
+      "description": "Chat domestique"
+    },
+    {
+      "id": 3,
+      "label": "Lapin",
+      "icon": "🐰",
+      "description": "Lapin domestique"
+    },
+    {
+      "id": 4,
+      "label": "Renard",
+      "icon": "🦊",
+      "description": "Renard"
+    }
+  ],
+  "animalBreeds": [
+    {
+      "id": 1,
+      "label": "Labrador Retriever",
+      "type": "Chien",
+      "description": "Chien de taille grande, actif et intelligent"
+    },
+    {
+      "id": 2,
+      "label": "Golden Retriever",
+      "type": "Chien",
+      "description": "Chien affectueux et familial"
+    },
+    {
+      "id": 3,
+      "label": "Berger Allemand",
+      "type": "Chien",
+      "description": "Chien intelligent et protecteur"
+    },
+    {
+      "id": 4,
+      "label": "Européen",
+      "type": "Chat",
+      "description": "Chat robuste et indépendant"
+    },
+    {
+      "id": 5,
+      "label": "Persan",
+      "type": "Chat",
+      "description": "Chat au pelage long et soyeux"
+    },
+    {
+      "id": 6,
+      "label": "Bélier Français",
+      "type": "Lapin",
+      "description": "Lapin aux longues oreilles tombantes"
+    }
+  ],
   "animals": [
     {
       "id": 1,
@@ -24,11 +88,12 @@
       "breed": "Labrador Retriever",
       "gender": "Mâle",
       "age": 7,
-      "ageUnit": "Années",
+      "ageUnit": "Mois",
       "weight": 25.5,
       "activityLevel": 3,
       "photo": "https://images.unsplash.com/photo-1552053831-71594a27632d?w=200",
-      "createdAt": "2024-01-15T10:30:00Z"
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2025-11-14T15:23:36.306Z"
     },
     {
       "id": 2,
@@ -45,6 +110,8 @@
       "createdAt": "2024-01-15T10:30:00Z"
     },
     {
+      "id": 14,
+      "userId": 1,
       "name": "Max",
       "type": "Chien",
       "breed": "Golden Retriever",
@@ -53,10 +120,11 @@
       "ageUnit": "Années",
       "weight": 30.2,
       "activityLevel": 4,
-      "photo": "https://example.com/photo.jpg",
-      "id": 14
+      "photo": "https://example.com/photo.jpg"
     },
     {
+      "id": 16,
+      "userId": 1,
       "name": "Test",
       "gender": "Mâle",
       "type": "Renard",
@@ -65,23 +133,54 @@
       "weight": 25.5,
       "activityLevel": 3,
       "photo": null,
-      "id": 16
+      "ageUnit": "Mois",
+      "updatedAt": "2025-11-14T15:23:57.838Z"
+    },
+    {
+      "id": 1763133310377,
+      "userId": 1,
+      "name": "Yyyy",
+      "type": "Renard",
+      "breed": "Xxx",
+      "gender": "Mâle",
+      "age": 3,
+      "ageUnit": "Années",
+      "weight": 25.5,
+      "activityLevel": 3,
+      "photo": "file:///data/user/0/host.exp.exponent/cache/ImagePicker/fe6ca469-c135-423d-813a-dd341a170ce7.jpeg",
+      "createdAt": "2025-11-14T15:15:10.377Z"
+    },
+    {
+      "id": 1763733432457,
+      "userId": 1,
+      "name": "Piper",
+      "type": "Renard",
+      "breed": "Labrador Retriever",
+      "gender": "Femelle",
+      "age": 3,
+      "ageUnit": "Mois",
+      "weight": 25.5,
+      "activityLevel": 5,
+      "photo": "file:///data/user/0/host.exp.exponent/cache/ImagePicker/c06c3ce5-1b15-4966-aa3e-d4563f5e5537.jpeg",
+      "createdAt": "2025-11-21T13:57:12.457Z"
     }
   ],
   "meals": [
     {
       "id": 1,
-      "animalId": 1,
+      "userId": 1,
+      "distributorId": 1,
       "name": "Petit déjeuner",
       "time": "08:00",
       "quantity": 40,
       "recurrence": "Tous les jours",
-      "enabled": true,
+      "enabled": false,
       "createdAt": "2024-01-15T10:30:00Z"
     },
     {
       "id": 2,
-      "animalId": 1,
+      "userId": 1,
+      "distributorId": 1,
       "name": "Déjeuner",
       "time": "12:30",
       "quantity": 60,
@@ -91,7 +190,8 @@
     },
     {
       "id": 3,
-      "animalId": 1,
+      "userId": 1,
+      "distributorId": 1,
       "name": "Dîner",
       "time": "19:00",
       "quantity": 60,
@@ -101,17 +201,19 @@
     },
     {
       "id": 4,
-      "animalId": 2,
+      "userId": 1,
+      "distributorId": 2,
       "name": "Matin",
       "time": "07:30",
       "quantity": 30,
       "recurrence": "Tous les jours",
-      "enabled": true,
+      "enabled": false,
       "createdAt": "2024-01-15T10:30:00Z"
     },
     {
       "id": 5,
-      "animalId": 2,
+      "userId": 1,
+      "distributorId": 2,
       "name": "Soir",
       "time": "18:00",
       "quantity": 35,
@@ -125,17 +227,39 @@
       "quantity": 30,
       "enabled": true,
       "recurrence": "Tous les jours",
-      "animalId": 1,
+      "userId": 1,
+      "distributorId": 1,
       "id": 6
     },
     {
       "name": "Goûter",
       "time": "15:30",
       "quantity": 30,
-      "animalId": 14,
+      "userId": 1,
+      "distributorId": 1,
       "recurrence": "Tous les jours",
       "enabled": true,
       "id": 7
+    },
+    {
+      "name": "Déjeuner",
+      "time": "12:30",
+      "quantity": 60,
+      "userId": 1,
+      "distributorId": 1,
+      "recurrence": "Tous les jours",
+      "enabled": false,
+      "id": 8
+    },
+    {
+      "name": "Test1",
+      "time": "08:05",
+      "quantity": 505,
+      "userId": 1,
+      "distributorId": 1,
+      "recurrence": "Personnalisé",
+      "enabled": true,
+      "id": 9
     }
   ],
   "distributions": [
@@ -208,43 +332,384 @@
       "distributedAt": "2025-09-12T14:38:59.996Z",
       "duration": 45,
       "success": true
+    },
+    {
+      "id": 1763114351487,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T09:59:11.487Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763114684089,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T10:04:44.089Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763118158354,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T11:02:38.355Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763118212621,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T11:03:32.621Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763118349188,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T11:05:49.188Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763118698410,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T11:11:38.410Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763118745522,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T11:12:25.522Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763119076968,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T11:17:56.968Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763128776513,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T13:59:36.513Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763128819941,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T14:00:19.941Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763130627414,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T14:30:27.414Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763130635646,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T14:30:35.646Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763132092563,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T14:54:52.563Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763133393756,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-14T15:16:33.756Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763716455568,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T09:14:15.568Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763716460484,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T09:14:20.484Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763718902884,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T09:55:02.884Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763718910771,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T09:55:10.771Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763719027524,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T09:57:07.524Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763719034843,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T09:57:14.843Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763719039757,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T09:57:19.757Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763719047436,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T09:57:27.436Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763719265667,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T10:01:05.667Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763719275288,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T10:01:15.288Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763719465627,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T10:04:25.627Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763719471369,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T10:04:31.369Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763719663957,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T10:07:43.957Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763721735413,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T10:42:15.413Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763733341291,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T13:55:41.291Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763733362651,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T13:56:02.651Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1763733458238,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2025-11-21T13:57:38.238Z",
+      "duration": 45,
+      "success": true
+    },
+    {
+      "id": 1770912321321,
+      "animalId": 1,
+      "mealId": null,
+      "plannedQuantity": 60,
+      "actualQuantity": 58,
+      "distributedAt": "2026-02-12T16:05:21.321Z",
+      "duration": 45,
+      "success": true
     }
   ],
   "distributorStatus": [
     {
       "id": 1,
-      "animalType": "Chien",
+      "userId": 1,
+      "animalId": 1,
+      "name": "Mangeoire Piper",
       "currentLevel": 100,
       "maxCapacity": 2000,
       "autonomyDays": 20,
       "lastRefill": "2025-09-19T09:20:29.499Z",
       "connected": true,
       "firmwareVersion": "2.4.1",
+      "location": "Cuisine",
       "updatedAt": "2025-09-19T09:20:27.464Z"
     },
     {
       "id": 2,
-      "animalType": "Chat",
+      "userId": 1,
+      "animalId": 2,
+      "name": "Mangeoire Ninou",
       "currentLevel": 100,
       "maxCapacity": 1500,
       "autonomyDays": 15,
-      "lastRefill": "2025-09-19T09:20:22.037Z",
-      "connected": true,
+      "lastRefill": "2025-11-21T14:39:36.221Z",
+      "connected": false,
       "firmwareVersion": "2.4.1",
-      "updatedAt": "2025-09-19T09:20:20.051Z"
+      "location": "Chambre",
+      "updatedAt": "2025-11-21T14:39:37.497Z"
     },
     {
       "id": 1757687776923,
-      "name": "Test mangeoire",
-      "animalType": "Chien",
+      "userId": 1,
+      "animalId": 1,
+      "name": "Mangeoire Piper (Secondaire)",
+      "currentLevel": 15,
       "maxCapacity": 2000,
-      "location": "",
-      "currentLevel": 100,
-      "autonomyDays": 15,
+      "location": "Salon",
+      "autonomyDays": 1,
       "lastRefill": "2025-09-12T14:36:16.030Z",
       "connected": true,
       "firmwareVersion": "2.4.1",
       "createdAt": "2025-09-12T14:36:16.923Z"
+    },
+    {
+      "id": 1763718780801,
+      "userId": 1,
+      "animalId": 2,
+      "name": "Test mang",
+      "maxCapacity": 2000,
+      "location": "Salon",
+      "currentLevel": 100,
+      "autonomyDays": 15,
+      "lastRefill": "2025-11-21T09:52:59.793Z",
+      "connected": true,
+      "firmwareVersion": "2.4.1",
+      "createdAt": "2025-11-21T09:53:00.801Z"
     }
   ],
   "notifications": [
@@ -269,19 +734,50 @@
       "sent": true,
       "read": false,
       "createdAt": "2024-04-23T09:00:00Z"
+    },
+    {
+      "id": "low-food-1757687776923",
+      "type": "lowFood",
+      "title": "Stock faible ⚠️",
+      "message": "Mangeoire Piper (Secondaire): 15% restant",
+      "read": true,
+      "userId": 1,
+      "updatedAt": "2025-11-21T13:21:27.654Z"
+    },
+    {
+      "id": "low-food-2",
+      "type": "lowFood",
+      "title": "Stock faible ⚠️",
+      "message": "Mangeoire Ninou: 25% restant",
+      "read": true,
+      "userId": 1,
+      "updatedAt": "2025-11-21T13:21:32.343Z",
+      "deleted": true
+    },
+    {
+      "id": "connection-2",
+      "type": "connection",
+      "title": "Mangeoire déconnectée",
+      "message": "Mangeoire Ninou n'est pas connectée",
+      "read": true,
+      "userId": 1,
+      "createdAt": "2025-11-21T13:17:06.285Z",
+      "updatedAt": "2025-11-21T14:35:51.937Z",
+      "deleted": true
     }
   ],
   "planning": [
     {
       "id": 1,
-      "userId": 1,
-      "dayOfWeek": 1,
-      "applyToAllDays": true,
+      "applyToAllDays": false,
+      "selectedDate": "2025-11-12T23:00:00.000Z",
       "meals": [
-        1,
-        2
-      ],
-      "updatedAt": "2024-04-23T10:00:00Z"
+        2,
+        5,
+        6,
+        7,
+        8
+      ]
     }
   ],
   "statistics": [

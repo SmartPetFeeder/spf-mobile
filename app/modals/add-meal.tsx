@@ -1,28 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  TextInput,
-  Alert
-} from 'react-native';
-import { useRouter } from 'expo-router';
+import { useAuth } from '@/hooks/useAuth';
+import { distributorApi, mealsApi } from '@/utils/BaseAPI';
 import { Picker } from '@react-native-picker/picker';
-import { mealsApi, animalsApi } from '@/utils/BaseAPI';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function AddMealModalScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     time: '08:00',
     quantity: '50',
-    animalId: null,
+    distributorId: null,
     recurrence: 'Tous les jours',
     enabled: true,
   });
-  const [animals, setAnimals] = useState([]);
+  const [distributors, setDistributors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
@@ -30,7 +32,7 @@ export default function AddMealModalScreen() {
     'Tous les jours',
     'Lundi au vendredi',
     'Week-end seulement',
-    'Personnalisé'
+    'Personnalisé',
   ];
 
   const mealPresets = [
@@ -41,18 +43,20 @@ export default function AddMealModalScreen() {
   ];
 
   useEffect(() => {
-    loadAnimals();
+    loadData();
   }, []);
 
-  const loadAnimals = async () => {
+  const loadData = async () => {
     try {
-      const animalsData = await animalsApi.getAll();
-      setAnimals(animalsData || []);
-      if (animalsData && animalsData.length > 0) {
-        setFormData({ ...formData, animalId: animalsData[0].id });
+      const distributorsData = user?.id
+        ? await distributorApi.getByUser(user.id)
+        : await distributorApi.getStatus();
+      setDistributors(distributorsData || []);
+      if (distributorsData && distributorsData.length > 0) {
+        setFormData((prev) => ({ ...prev, distributorId: distributorsData[0].id }));
       }
     } catch (error) {
-      console.error('Erreur lors du chargement des animaux:', error);
+      console.error('Erreur lors du chargement:', error);
     }
   };
 
@@ -81,27 +85,28 @@ export default function AddMealModalScreen() {
       return;
     }
 
-    if (!formData.animalId) {
-      Alert.alert('Erreur', 'Veuillez sélectionner un animal');
+    if (!formData.distributorId) {
+      Alert.alert('Erreur', 'Veuillez sélectionner une mangoire');
       return;
     }
 
     setLoading(true);
     try {
       await mealsApi.create({
+        userId: user?.id,
         name: formData.name.trim(),
         time: formData.time,
         quantity: parseInt(formData.quantity),
-        animalId: formData.animalId,
+        distributorId: formData.distributorId,
         recurrence: formData.recurrence,
         enabled: formData.enabled,
       });
 
       Alert.alert('Succès', 'Repas ajouté avec succès', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error) {
-      Alert.alert('Erreur', error.message || 'Erreur lors de l\'ajout du repas');
+      Alert.alert('Erreur', error.message || "Erreur lors de l'ajout du repas");
     } finally {
       setLoading(false);
     }
@@ -120,8 +125,7 @@ export default function AddMealModalScreen() {
             <Picker
               selectedValue={currentHour}
               style={styles.timePicker}
-              onValueChange={(hour) => handleTimeChange(hour, currentMinute)}
-            >
+              onValueChange={(hour) => handleTimeChange(hour, currentMinute)}>
               {hours.map((hour) => (
                 <Picker.Item key={hour} label={hour.toString().padStart(2, '0')} value={hour} />
               ))}
@@ -132,10 +136,13 @@ export default function AddMealModalScreen() {
             <Picker
               selectedValue={currentMinute}
               style={styles.timePicker}
-              onValueChange={(minute) => handleTimeChange(currentHour, minute)}
-            >
+              onValueChange={(minute) => handleTimeChange(currentHour, minute)}>
               {minutes.map((minute) => (
-                <Picker.Item key={minute} label={minute.toString().padStart(2, '0')} value={minute} />
+                <Picker.Item
+                  key={minute}
+                  label={minute.toString().padStart(2, '0')}
+                  value={minute}
+                />
               ))}
             </Picker>
           </View>
@@ -167,10 +174,11 @@ export default function AddMealModalScreen() {
               <TouchableOpacity
                 key={index}
                 style={styles.presetButton}
-                onPress={() => handlePresetSelect(preset)}
-              >
+                onPress={() => handlePresetSelect(preset)}>
                 <Text style={styles.presetName}>{preset.name}</Text>
-                <Text style={styles.presetDetails}>{preset.time} • {preset.quantity}g</Text>
+                <Text style={styles.presetDetails}>
+                  {preset.time} • {preset.quantity}g
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -187,18 +195,17 @@ export default function AddMealModalScreen() {
           />
         </View>
 
-        {/* Animal */}
+        {/* Mangoire */}
         <View style={styles.inputSection}>
-          <Text style={styles.label}>Animal</Text>
+          <Text style={styles.label}>Mangoire</Text>
           <View style={styles.pickerContainer}>
             <Picker
-              selectedValue={formData.animalId}
+              selectedValue={formData.distributorId}
               style={styles.picker}
-              onValueChange={(animalId) => setFormData({ ...formData, animalId })}
-            >
-              <Picker.Item label="Sélectionner un animal" value={null} />
-              {animals.map((animal) => (
-                <Picker.Item key={animal.id} label={animal.name} value={animal.id} />
+              onValueChange={(distributorId) => setFormData({ ...formData, distributorId })}>
+              <Picker.Item label="Sélectionner une mangoire" value={null} />
+              {distributors.map((distributor) => (
+                <Picker.Item key={distributor.id} label={distributor.name} value={distributor.id} />
               ))}
             </Picker>
           </View>
@@ -209,8 +216,7 @@ export default function AddMealModalScreen() {
           <Text style={styles.label}>Heure du repas</Text>
           <TouchableOpacity
             style={styles.timeButton}
-            onPress={() => setShowTimePicker(!showTimePicker)}
-          >
+            onPress={() => setShowTimePicker(!showTimePicker)}>
             <Text style={styles.timeButtonText}>{formData.time}</Text>
             <Text style={styles.timeButtonIcon}>🕒</Text>
           </TouchableOpacity>
@@ -227,9 +233,7 @@ export default function AddMealModalScreen() {
             onChangeText={(text) => setFormData({ ...formData, quantity: text })}
             keyboardType="numeric"
           />
-          <Text style={styles.helperText}>
-            Quantité de nourriture à distribuer pour ce repas
-          </Text>
+          <Text style={styles.helperText}>Quantité de nourriture à distribuer pour ce repas</Text>
         </View>
 
         {/* Récurrence */}
@@ -239,8 +243,7 @@ export default function AddMealModalScreen() {
             <Picker
               selectedValue={formData.recurrence}
               style={styles.picker}
-              onValueChange={(recurrence) => setFormData({ ...formData, recurrence })}
-            >
+              onValueChange={(recurrence) => setFormData({ ...formData, recurrence })}>
               {recurrenceOptions.map((option) => (
                 <Picker.Item key={option} label={option} value={option} />
               ))}
@@ -258,16 +261,9 @@ export default function AddMealModalScreen() {
               </Text>
             </View>
             <TouchableOpacity
-              style={[
-                styles.switch,
-                formData.enabled && styles.switchEnabled
-              ]}
-              onPress={() => setFormData({ ...formData, enabled: !formData.enabled })}
-            >
-              <View style={[
-                styles.switchThumb,
-                formData.enabled && styles.switchThumbEnabled
-              ]} />
+              style={[styles.switch, formData.enabled && styles.switchEnabled]}
+              onPress={() => setFormData({ ...formData, enabled: !formData.enabled })}>
+              <View style={[styles.switchThumb, formData.enabled && styles.switchThumbEnabled]} />
             </TouchableOpacity>
           </View>
         </View>
@@ -281,9 +277,10 @@ export default function AddMealModalScreen() {
               <Text style={styles.summaryValue}>{formData.name || 'Non défini'}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Animal :</Text>
+              <Text style={styles.summaryLabel}>Mangoire :</Text>
               <Text style={styles.summaryValue}>
-                {animals.find(a => a.id === formData.animalId)?.name || 'Non sélectionné'}
+                {distributors.find((d) => d.id === formData.distributorId)?.name ||
+                  'Non sélectionnée'}
               </Text>
             </View>
             <View style={styles.summaryRow}>
@@ -300,10 +297,8 @@ export default function AddMealModalScreen() {
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Statut :</Text>
-              <Text style={[
-                styles.summaryValue,
-                { color: formData.enabled ? '#4CD964' : '#FF3B30' }
-              ]}>
+              <Text
+                style={[styles.summaryValue, { color: formData.enabled ? '#4CD964' : '#FF3B30' }]}>
                 {formData.enabled ? 'Activé' : 'Désactivé'}
               </Text>
             </View>

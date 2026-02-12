@@ -34,15 +34,15 @@ export default function SplashScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Smart Pet Feeder</Text>
       <Text style={styles.subtitle}>Nourrissez intelligemment, prenez soin avec précision</Text>
-      
+
       <View style={styles.logoContainer}>
-        <Image 
-                  source={require('@/assets/images/logo.png')} 
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
+        <Image
+          source={require('@/assets/images/logo.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
       </View>
-      
+
       <Text style={styles.version}>Version 1.0</Text>
     </View>
   );

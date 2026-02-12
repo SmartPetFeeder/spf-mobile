@@ -1,20 +1,22 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  TextInput,
-  Alert,
-  Image
-} from 'react-native';
-import { useRouter } from 'expo-router';
+import { useAuth } from '@/hooks/useAuth';
+import { animalBreedsApi, animalsApi, animalTypesApi } from '@/utils/BaseAPI';
 import * as ImagePicker from 'expo-image-picker';
-import { animalsApi } from '@/utils/BaseAPI';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function AddAnimalScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     type: 'Chien',
@@ -26,14 +28,50 @@ export default function AddAnimalScreen() {
     activityLevel: 3,
     photo: null,
   });
+  const [animalTypes, setAnimalTypes] = useState([]);
+  const [animalBreeds, setAnimalBreeds] = useState([]);
+  const [filteredBreeds, setFilteredBreeds] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const animalTypes = [
-    { icon: '🐕', label: 'Chien' },
-    { icon: '🐱', label: 'Chat' },
-    { icon: '🐰', label: 'Lapin' },
-    { icon: '🦊', label: 'Renard' },
-  ];
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    // Filtrer les races en fonction du type sélectionné
+    const filtered = animalBreeds.filter((breed) => breed.type === formData.type);
+    setFilteredBreeds(filtered);
+    // Définir la première race disponible pour ce type
+    if (filtered && filtered.length > 0) {
+      setFormData((prev) => ({ ...prev, breed: filtered[0].label }));
+    }
+  }, [formData.type, animalBreeds]);
+
+  const loadData = async () => {
+    try {
+      console.log('[AddAnimal] Chargement des types et races...');
+      const [types, breeds] = await Promise.all([
+        animalTypesApi.getAll(),
+        animalBreedsApi.getAll(),
+      ]);
+      console.log('[AddAnimal] Types chargés:', types);
+      console.log('[AddAnimal] Races chargées:', breeds);
+      setAnimalTypes(types || []);
+      setAnimalBreeds(breeds || []);
+
+      // Définir le premier type et sa première race par défaut
+      if (types && types.length > 0) {
+        setFormData((prev) => ({ ...prev, type: types[0].label }));
+        const firstBreeds = (breeds || []).filter((b) => b.type === types[0].label);
+        if (firstBreeds.length > 0) {
+          setFormData((prev) => ({ ...prev, breed: firstBreeds[0].label }));
+        }
+      }
+    } catch (error) {
+      console.error('[AddAnimal] Erreur lors du chargement:', error);
+      Alert.alert('Erreur', 'Impossible de charger les données');
+    }
+  };
 
   const activityLevels = [
     { level: 1, label: 'Peu actif', description: 'Repos principalement' },
@@ -56,13 +94,13 @@ export default function AddAnimalScreen() {
         setFormData({ ...formData, photo: result.assets[0].uri });
       }
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'accéder à la galerie photo');
+      Alert.alert('Erreur', "Impossible d'accéder à la galerie photo");
     }
   };
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      Alert.alert('Erreur', 'Veuillez entrer le nom de l\'animal');
+      Alert.alert('Erreur', "Veuillez entrer le nom de l'animal");
       return;
     }
 
@@ -79,6 +117,7 @@ export default function AddAnimalScreen() {
     setLoading(true);
     try {
       await animalsApi.create({
+        userId: user?.id,
         name: formData.name.trim(),
         type: formData.type,
         breed: formData.breed,
@@ -91,10 +130,10 @@ export default function AddAnimalScreen() {
       });
 
       Alert.alert('Succès', 'Animal ajouté avec succès', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (error) {
-      Alert.alert('Erreur', error.message || 'Erreur lors de l\'ajout de l\'animal');
+      Alert.alert('Erreur', error.message || "Erreur lors de l'ajout de l'animal");
     } finally {
       setLoading(false);
     }
@@ -149,10 +188,9 @@ export default function AddAnimalScreen() {
                 key={index}
                 style={[
                   styles.animalTypeButton,
-                  formData.type === type.label && styles.selectedAnimalType
+                  formData.type === type.label && styles.selectedAnimalType,
                 ]}
-                onPress={() => setFormData({ ...formData, type: type.label })}
-              >
+                onPress={() => setFormData({ ...formData, type: type.label })}>
                 <Text style={styles.animalTypeIcon}>{type.icon}</Text>
               </TouchableOpacity>
             ))}
@@ -166,16 +204,13 @@ export default function AddAnimalScreen() {
             {['Mâle', 'Femelle'].map((gender) => (
               <TouchableOpacity
                 key={gender}
-                style={[
-                  styles.genderButton,
-                  formData.gender === gender && styles.selectedGender
-                ]}
-                onPress={() => setFormData({ ...formData, gender })}
-              >
-                <Text style={[
-                  styles.genderText,
-                  formData.gender === gender && styles.selectedGenderText
-                ]}>
+                style={[styles.genderButton, formData.gender === gender && styles.selectedGender]}
+                onPress={() => setFormData({ ...formData, gender })}>
+                <Text
+                  style={[
+                    styles.genderText,
+                    formData.gender === gender && styles.selectedGenderText,
+                  ]}>
                   {gender}
                 </Text>
               </TouchableOpacity>
@@ -186,12 +221,37 @@ export default function AddAnimalScreen() {
         {/* Race */}
         <View style={styles.inputSection}>
           <Text style={styles.label}>Race</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex: Labrador Retriever"
-            value={formData.breed}
-            onChangeText={(text) => setFormData({ ...formData, breed: text })}
-          />
+          {filteredBreeds.length > 0 ? (
+            <View style={styles.breedButtonsContainer}>
+              {filteredBreeds.map((breed, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.breedButton,
+                    formData.breed === breed.label && styles.selectedBreed,
+                  ]}
+                  onPress={() => setFormData({ ...formData, breed: breed.label })}>
+                  <Text
+                    style={[
+                      styles.breedButtonText,
+                      formData.breed === breed.label && styles.selectedBreedText,
+                    ]}>
+                    {breed.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.noBreedContainer}>
+              <Text style={styles.noBreedText}>Aucune race disponible pour ce type</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Entrez une race personnalisée"
+                value={formData.breed}
+                onChangeText={(text) => setFormData({ ...formData, breed: text })}
+              />
+            </View>
+          )}
         </View>
 
         {/* Âge et Poids */}
@@ -222,16 +282,18 @@ export default function AddAnimalScreen() {
         <View style={styles.inputSection}>
           <Text style={styles.label}>Niveau d'activité</Text>
           <Text style={styles.activityCurrentLabel}>
-            {activityLevels.find(level => level.level === formData.activityLevel)?.label}
+            {activityLevels.find((level) => level.level === formData.activityLevel)?.label}
           </Text>
-          
+
           <View style={styles.activityLevelContainer}>
             {[1, 2, 3, 4, 5].map((level) => (
               <TouchableOpacity
                 key={level}
                 style={[
                   styles.activityDot,
-                  formData.activityLevel >= level ? styles.activityDotActive : styles.activityDotInactive
+                  formData.activityLevel >= level
+                    ? styles.activityDotActive
+                    : styles.activityDotInactive,
                 ]}
                 onPress={() => setFormData({ ...formData, activityLevel: level })}
               />
@@ -240,10 +302,10 @@ export default function AddAnimalScreen() {
 
           <View style={styles.activityDescription}>
             <Text style={styles.activityDescriptionTitle}>
-              {activityLevels.find(level => level.level === formData.activityLevel)?.label}
+              {activityLevels.find((level) => level.level === formData.activityLevel)?.label}
             </Text>
             <Text style={styles.activityDescriptionText}>
-              {activityLevels.find(level => level.level === formData.activityLevel)?.description}
+              {activityLevels.find((level) => level.level === formData.activityLevel)?.description}
             </Text>
           </View>
         </View>
@@ -433,5 +495,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  breedButtonsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  breedButton: {
+    flex: 1,
+    minWidth: '48%',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  selectedBreed: {
+    backgroundColor: '#4ECDC4',
+    borderColor: '#4ECDC4',
+  },
+  breedButtonText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
+  selectedBreedText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  noBreedContainer: {
+    gap: 8,
+  },
+  noBreedText: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
   },
 });

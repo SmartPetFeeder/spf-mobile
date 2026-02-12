@@ -167,7 +167,13 @@ export default function NotificationsScreen() {
       }
 
       // Trier par date (plus récent en premier)
-      generatedNotifications.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      generatedNotifications.sort((a, b) => {
+        const timeA =
+          a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+        const timeB =
+          b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+        return timeB - timeA;
+      });
       setNotifications(generatedNotifications);
     } catch (error) {
       console.error('[Notifications] Erreur:', error);
@@ -241,7 +247,7 @@ export default function NotificationsScreen() {
   const renderNotification = ({ item }: { item: Notification }) => (
     <TouchableOpacity
       style={[styles.notificationItem, !item.read && styles.notificationItemUnread]}
-      onPress={() => markAsRead(item.id)}>
+      onPress={() => markAsRead(String(item.id))}>
       <View style={[styles.iconContainer, { backgroundColor: `${item.color}20` }]}>
         <Text style={styles.icon}>{item.icon}</Text>
       </View>
@@ -253,10 +259,14 @@ export default function NotificationsScreen() {
         <Text style={styles.notificationMessage} numberOfLines={2}>
           {item.message}
         </Text>
-        <Text style={styles.notificationTime}>{formatTime(item.timestamp)}</Text>
+        <Text style={styles.notificationTime}>
+          {formatTime(item.timestamp instanceof Date ? item.timestamp : new Date(item.timestamp))}
+        </Text>
       </View>
 
-      <TouchableOpacity style={styles.deleteButton} onPress={() => deleteNotification(item.id)}>
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => deleteNotification(String(item.id))}>
         <Ionicons name="close" size={18} color={COLORS.textTertiary} />
       </TouchableOpacity>
     </TouchableOpacity>
@@ -288,7 +298,7 @@ export default function NotificationsScreen() {
           <FlatList
             data={notifications}
             renderItem={renderNotification}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => String(item.id)}
             scrollEnabled={false}
             contentContainerStyle={styles.listContent}
           />

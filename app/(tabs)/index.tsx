@@ -2,25 +2,26 @@ import { BORDER_RADIUS, COLORS, SHADOWS, SPACING } from '@/constants/ThemeColors
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
 import {
-  animalsApi,
-  distributorApi,
-  mealsApi,
-  notificationsApi,
-  statisticsApi,
+    animalsApi,
+    distributorApi,
+    mealsApi,
+    notificationsApi,
+    statisticsApi,
 } from '@/utils/BaseAPI';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
-  Image,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
+
 export default function HomeScreen() {
   const router = useRouter();
   const { notifyMealDistributed, notifyLowFood } = useNotifications();
@@ -29,7 +30,7 @@ export default function HomeScreen() {
   const [distributorStatus, setDistributorStatus] = useState<any[]>([]);
   const [nextMeal, setNextMeal] = useState<any>(null);
   const [nextMealsByDistributor, setNextMealsByDistributor] = useState<any[]>([]);
-  const [stats, setStats] = useState({});
+  const [stats, setStats] = useState<{ consumption?: string; regularity?: string }>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
@@ -217,11 +218,11 @@ export default function HomeScreen() {
     ]);
   };
 
-  const formatLastRefill = (dateString) => {
+  const formatLastRefill = (dateString: string) => {
     if (!dateString) return 'Inconnu';
     const date = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now - date);
+    const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) return "Aujourd'hui";
